@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Boolean, \
-    DateTime, Table, ForeignKey, String
+    DateTime, Table, ForeignKey, String, Enum
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -7,33 +7,31 @@ from sqlalchemy.orm import sessionmaker, relationship
 Base = declarative_base()
 
 
-# creating many-to-many mapping
-commit_to_file = Table(
-    'commit_to_file', Base.metadata,
-    Column('commit_id', Integer, ForeignKey('commits.id')),
-    Column('file_id', Integer, ForeignKey('files.id'))
-    )
-
-
 class Commit(Base):
-    __tablename__ = 'commits'
+    __tablename__ = 'commit'
 
     id = Column(Integer, primary_key=True)
     pushed_time = Column(DateTime)
     is_fix = Column(Boolean)
-    filse = relationship(
-        "File",
-        secondary=commit_to_file,
-        backref='commits'
-        )
 
 
 class File(Base):
-    __tablename__ = 'files'
+    __tablename__ = 'file'
 
     id = Column(Integer, primary_key=True)
     path = Column(String, unique=True)
 
+
+class Change(Base):
+    __tablename__ = 'change'
+
+    id = Column(Integer, primary_key=True)
+    change_type = Column(
+        Enum('creation', 'deletion', 'change', name='change_type'))
+    file_id = Column(Integer, ForeignKey('file.id'))
+    commit_id = Column(Integer, ForeignKey('commit.id'))
+    file = relationship("File", backref='change')
+    commit = relationship("Commit", backref='change')
 
 class DB():
     def __init__(self, eng):
