@@ -33,6 +33,7 @@ class Change(Base):
     file = relationship("File", backref='change')
     commit = relationship("Commit", backref='change')
 
+
 class DB():
     def __init__(self, eng):
         self.engine = create_engine(eng)
