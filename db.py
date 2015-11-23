@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, Boolean, \
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 
 Base = declarative_base()
 
@@ -32,6 +33,18 @@ class Change(Base):
     commit_id = Column(Integer, ForeignKey('commit.id'))
     file = relationship("File", backref='change')
     commit = relationship("Commit", backref='change')
+
+
+class FileDistance(Base):
+    __tablename__ = 'file_distance'
+    id = Column(Integer, primary_key=True)
+    file1_id = Column(Integer, ForeignKey('file.id'))
+    file2_id = Column(Integer, ForeignKey('file.id'))
+    change_num = Column(Integer)
+
+    @hybrid_property
+    def distance(self):
+        return 1/float(self.change_num)
 
 
 class DB():
