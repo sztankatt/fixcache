@@ -21,6 +21,14 @@ class File(Base):
 
     id = Column(Integer, primary_key=True)
     path = Column(String, unique=True)
+    distance1 = relationship(
+        "FileDistance",
+        backref="file1",
+        primaryjoin="and_(File.id==FileDistance.file1_id)")
+    distance2 = relationship(
+        "FileDistance",
+        backref="file2",
+        primaryjoin="and_(File.id==FileDistance.file2_id)")
 
 
 class Change(Base):
