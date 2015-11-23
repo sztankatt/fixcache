@@ -3,6 +3,7 @@ import os
 import re
 import datetime
 import sys
+import itertools
 from git import Repo
 from db import DB, Commit, File, Change
 
@@ -19,7 +20,7 @@ class Repository():
         self.session = self.database.setup()
 
         try:
-            repo = Repo(FACEBOOK_SDK_REPO)
+            repo = Repo(repo_dir)
             assert not repo.bare
             merge_commit_num = 0
             commit_list = repo.iter_commits()
@@ -43,6 +44,9 @@ class Repository():
 
             self.merge_commit_num = merge_commit_num
             self.session.commit()
+        except NoSuchPathError as e:
+                print """Something went wrong when trying to read the
+                          repository. Please check if it exists."""
         except Exception as e:
             raise e
 
@@ -105,6 +109,21 @@ class Repository():
         commit_num += self.merge_commit_num
         return commit_num
 
+    def calculate_file_distances(self, commit):
+        """given a commit object from the DB it recomputes the new distances
+           between files for that commit"""
+        raise NotImplementedError
+        files = [chg.file for chg in commit.change]
+        for file1, file2 in itertools.combinations(files, 2):
+            # check which file's id is bigger. Whichever is bigger comes as the
+            # first file in the distance database indexing
+            if file1.id > file2.id:
+                pass
+            else:
+                pass
+        
+
 r = Repository(FACEBOOK_SDK_REPO)
-print r.get_commit_num()
+for c in r.session.query(Commit).all():
+    r.calculate_file_distances(c)
 r.database.teardown()

@@ -16,15 +16,19 @@ def test():
         database = DB('sqlite:///fixcache_test.db')
         session = database.setup()
         f = File(path='aa')
+        f2 = File(path='bb')
         c = Commit(is_fix=False, pushed_time=datetime.datetime.now())
         chg = Change(file=f, commit=c, change_type='creation')
+        chg2 = Change(file=f2, commit=c, change_type='creation')
         session.add(f)
+        session.add(f2)
         session.add(c)
         session.add(chg)
+        session.add(chg2)
         session.commit()
 
         c = session.query(Commit).all()[0]
-        print c.change[0].file
+        print [chg.file for chg in c.change]
     except Exception as e:
         raise e
     finally:
