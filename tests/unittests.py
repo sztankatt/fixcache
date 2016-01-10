@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 import unittest
 from fixcache import filemanagement
+from fixcache import cache
 
 
 class FilemanagementTestCase(unittest.TestCase):
@@ -8,8 +9,20 @@ class FilemanagementTestCase(unittest.TestCase):
         self.file1 = filemanagement.File('patha')
         self.file2 = filemanagement.File('pathb')
         self.file3 = filemanagement.File('pathc')
-        self.file4 = filemanagement.File('patha')
+        self.file4 = filemanagement.File('pathd')
         self.distance = filemanagement.Distance(self.file1, self.file2, 0)
+
+    def test_file_operations(self):
+        self.file1.changed(10)
+        self.file1.changed(15)
+        self.file2.changed(32)
+        self.file2.fault(33)
+
+        self.assertEqual(self.file1.last_found, 15)
+        self.assertEqual(self.file1.changes, 3)
+        self.assertEqual(self.file1.faults, 0)
+        self.assertEqual(self.file2.faults, 1)
+        self.assertEqual(self.file2.changes, 3)
 
     def test_file_in_list(self):
         self.file_list = [self.file1, self.file3]
@@ -65,6 +78,23 @@ class FilemanagementTestCase(unittest.TestCase):
                          [self.file2, self.file3, self.file4])
 
 
+class CacheTestCase(unittest.TestCase):
+    def setUp(self):
+        self.file1 = filemanagement.File('patha')
+        self.file2 = filemanagement.File('pathb')
+        self.file3 = filemanagement.File('pathc')
+        self.file4 = filemanagement.File('pathd')
+        self.file5 = filemanagement.File('pathe')
+        self.cache = cache.SimpleCache(4, 0.5)
+        self.cache.add(self.file1)
+        self.cache.add(self.file2)
+
+    def test_cache_add(self):
+        self.assertEqual(self.cache.file_in(self.file1), self.cache.hit)
+        self.assertEqual(self.cache.file_in(self.file3), self.cache.miss)
+
 if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(FilemanagementTestCase)
+    s1 = unittest.TestLoader().loadTestsFromTestCase(FilemanagementTestCase)
+    s2 = unittest.TestLoader().loadTestsFromTestCase(CacheTestCase)
+    suite = unittest.TestSuite([s1, s2])
     unittest.TextTestRunner(verbosity=2).run(suite)
