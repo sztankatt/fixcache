@@ -16,10 +16,47 @@ class File:
         self.changes = 1
         self.last_found = 0
 
-    def reset(self):
-        self.last_found = -1
-        self.faults = 0
-        self.changes = 0
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, value):
+        if value == "":
+            raise ValueError("Path of a File cannot be empty")
+        self._path = value
+
+    @property
+    def faults(self):
+        return self._faults
+
+    @faults.setter
+    def faults(self, value):
+        if value < 0:
+            raise ValueError("A File cannot have negative number of faults")
+        self._faults = value
+
+    @property
+    def changes(self):
+        return self._changes
+
+    @changes.setter
+    def changes(self, value):
+        if value < 1:
+            raise ValueError(
+                "Each File has changed at least once. %s is incorrect" %
+                (value,))
+        self._changes = value
+
+    @property
+    def last_found(self):
+        return self._last_found
+
+    @last_found.setter
+    def last_found(self, value):
+        if value < 0:
+            raise ValueError("Last-found Commit number cannot be negative")
+        self._last_found = value
 
     def changed(self, commit):
         self.changes += 1
