@@ -9,7 +9,7 @@ class DistanceError(Exception):
         return repr(self.value)
 
 
-class File:
+class File(object):
     def __init__(self, path):
         self.path = path
         self.faults = 0
@@ -80,7 +80,7 @@ class FileSet:
             return self.files[file_path]
 
 
-class Distance:
+class Distance(object):
     def __init__(self, file1_in, file2_in, first_commit=None):
         # storing the file with longer path as the first one
         self.files = {
@@ -137,7 +137,7 @@ class Distance:
                 % (file_in,))
 
 
-class DistanceSet:
+class DistanceSet(object):
     def __init__(self):
         self.distance_set = set()
         self.distance_dict = {}
