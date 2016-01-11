@@ -10,6 +10,7 @@ class FilemanagementTestCase(unittest.TestCase):
         self.file2 = filemanagement.File('pathb')
         self.file3 = filemanagement.File('pathc')
         self.file4 = filemanagement.File('pathd')
+        self.file5 = filemanagement.File('pathe')
         self.distance = filemanagement.Distance(self.file1, self.file2, 0)
 
     def test_file_operations(self):
@@ -85,13 +86,79 @@ class CacheTestCase(unittest.TestCase):
         self.file3 = filemanagement.File('pathc')
         self.file4 = filemanagement.File('pathd')
         self.file5 = filemanagement.File('pathe')
-        self.cache = cache.SimpleCache(4, 0.5)
+        self.cache = cache.SimpleCache(4)
         self.cache.add(self.file1)
         self.cache.add(self.file2)
+
+    def test_cache_init(self):
+        with self.assertRaises(ValueError):
+            cache.SimpleCache(0)
+        with self.assertRaises(ValueError):
+            cache.SimpleCache(-1)
+
+        self.assertEqual(self.cache.hit, True)
+        self.assertEqual(self.cache.miss, False)
+
+        self.assertEqual(self.cache.size, 4)
 
     def test_cache_add(self):
         self.assertEqual(self.cache.file_in(self.file1), self.cache.hit)
         self.assertEqual(self.cache.file_in(self.file3), self.cache.miss)
+
+    def test_cache_add_multiple(self):
+        self.file1.changed(1)
+        self.file2.changed(2)
+        self.file3.changed(3)
+        self.file4.changed(4)
+        self.file5.changed(5)
+        self.cache.add_multiple([self.file3, self.file4, self.file5])
+
+        self.assertEqual(self.cache.file_in(self.file4), self.cache.hit)
+        self.assertEqual(self.cache.file_in(self.file5), self.cache.hit)
+        self.assertEqual(self.cache.file_in(self.file2), self.cache.hit)
+        self.assertEqual(self.cache.file_in(self.file3), self.cache.hit)
+        self.assertEqual(self.cache.file_in(self.file1), self.cache.miss)
+
+    def _add_files(self):
+        self.file1.changed(50)
+        self.file2.changed(30)
+        self.file3.fault(32)
+        self.file4.fault(15)
+        self.file4.changed(21)
+
+        self.cache.add_multiple([self.file4, self.file3])
+
+    def test_cache__remove(self):
+        self._add_files()
+
+        self.assertEqual(self.cache._remove(), self.file4)
+        self.assertEqual(self.cache._remove(), self.file2)
+        self.assertEqual(self.cache._remove(), self.file3)
+        self.assertEqual(self.cache._remove(), self.file1)
+
+        self.assertEqual(self.cache._get_free_space(), 4)
+        self.assertEqual(self.cache._remove(), None)
+
+        self.cache.add(self.file3)
+
+        self.assertEqual(self.cache._remove(), self.file3)
+
+    def test_cache__remove_multiple(self):
+        self._add_files()
+        self.cache._remove_multiple(5)
+
+        self.assertEqual(self.cache._get_free_space(), 4)
+
+        self._add_files()
+
+        self.assertEqual(self.cache._get_free_space(), 2)
+
+        self.cache.add(self.file2)
+        self.cache._remove_multiple(2)
+
+        self.assertEqual(self.cache.file_in(self.file3), self.cache.hit)
+        self.assertEqual(self.cache.file_in(self.file2), self.cache.miss)
+        self.assertEqual(self.cache._get_free_space(), 3)
 
 if __name__ == '__main__':
     s1 = unittest.TestLoader().loadTestsFromTestCase(FilemanagementTestCase)
