@@ -62,6 +62,12 @@ class FilemanagementTestCase(unittest.TestCase):
         ds = filemanagement.DistanceSet()
 
         self.assertEqual(ds.get_occurrence(self.file1, self.file2), 1)
+        self.assertEqual(ds.get_closest_files(self.file3, 10), [])
+
+        distance, created = ds._get_or_create_distance(self.file1, self.file3)
+
+        self.assertEqual(created, True)
+        self.assertEqual(len(distance.occurrence_list), 1)
 
         ds.add_occurrence(self.file1, self.file2, 20)
         ds.add_occurrence(self.file1, self.file2, 31)
@@ -119,6 +125,18 @@ class CacheTestCase(unittest.TestCase):
         self.assertEqual(self.cache.file_in(self.file3), self.cache.hit)
         self.assertEqual(self.cache.file_in(self.file1), self.cache.miss)
 
+        new_files = [
+            filemanagement.File('a'),
+            filemanagement.File('b'),
+            filemanagement.File('c'),
+            filemanagement.File('d')
+        ]
+
+        self.cache.add_multiple(new_files)
+
+        for file_ in new_files:
+            self.assertEqual(self.cache.file_in(file_), self.cache.hit)
+
     def _add_files(self):
         self.file1.changed(50)
         self.file2.changed(30)
@@ -159,6 +177,10 @@ class CacheTestCase(unittest.TestCase):
         self.assertEqual(self.cache.file_in(self.file3), self.cache.hit)
         self.assertEqual(self.cache.file_in(self.file2), self.cache.miss)
         self.assertEqual(self.cache._get_free_space(), 3)
+
+        self.cache._remove_multiple(1)
+
+        self.assertEqual(len(self.cache.file_set), 0)
 
 if __name__ == '__main__':
     s1 = unittest.TestLoader().loadTestsFromTestCase(FilemanagementTestCase)
