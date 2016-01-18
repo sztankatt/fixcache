@@ -76,12 +76,14 @@ class Cache(object):
             return self.miss
 
     def add(self, file_):
-        if self._filled:
+	print "add() called"
+        if self._filled():
             self._remove()
 
         self.file_set.add(file_)
 
     def add_multiple(self, files):
+	print "add multiple called"
         files = self._preprocess_multiple(files)
         len_ = len(files)
 
