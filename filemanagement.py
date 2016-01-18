@@ -10,11 +10,11 @@ class DistanceError(Exception):
 
 
 class File(object):
-    def __init__(self, path):
+    def __init__(self, path, commit=0):
         self.path = path
         self.faults = 0
         self.changes = 1
-        self.last_found = 0
+        self.last_found = commit
 
     @property
     def path(self):
@@ -71,13 +71,18 @@ class FileSet:
     def __init__(self):
         self.files = {}
 
-    def get_file(self, file_path):
+    def get_file(self, file_path, commit=0):
         if file_path not in self.files:
-            f = File(file_path)
+            f = File(file_path, commit)
             self.files[file_path] = f
             return f
         else:
             return self.files[file_path]
+
+    def get_multiple(self, files):
+        return_list = [self.get_file(path) for path in files]
+
+        return return_list
 
 
 class Distance(object):

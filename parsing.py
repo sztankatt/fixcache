@@ -22,8 +22,8 @@ def get_deletes(line):
         match2 = pattern2.match(line)
 
         if match1 is not None:
-            start_line = match1.group("start_line")
-            line_num = match1.group("line_num")
+            start_line = int(match1.group("start_line"))
+            line_num = int(match1.group("line_num"))
 
             return (start_line, line_num,)
 

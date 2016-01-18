@@ -77,7 +77,7 @@ class Cache(object):
 
     def add(self, file_):
         if self._filled:
-            self._remove
+            self._remove()
 
         self.file_set.add(file_)
 
@@ -93,6 +93,9 @@ class Cache(object):
             self.file_set |= set(files)
         else:
             self.file_set = set(files[:self.size])
+
+    def flush(self):
+        self.file_set = set()
 
 
 class SimpleCache(Cache):
