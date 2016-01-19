@@ -1,7 +1,8 @@
 import heapq
+import logging
 
 
-class DistanceError(Exception):
+class iFilemanagementError(Exception):
     def __init__(self, value):
         self.value = value
 
@@ -9,12 +10,32 @@ class DistanceError(Exception):
         return repr(self.value)
 
 
+class DistanceError(iFilemanagementError):
+    pass
+
+
+class FileError(iFilemanagementError):
+    pass
+
+
+class FileSetError(iFilemanagementError):
+    pass
+
+
+class DistanceSetError(iFilemanagementError):
+    pass
+
+
 class File(object):
     def __init__(self, path, commit=0):
-        self.path = path
-        self.faults = 0
-        self.changes = 1
-        self.last_found = commit
+        try:
+            self.path = path
+            self.faults = 0
+            self.changes = 1
+            self.last_found = commit
+        except ValueError as ve:
+            logging.warning(ve)
+            raise FileError("Error during initialization of file")
 
     def __str__(self):
         return self.path
@@ -62,12 +83,21 @@ class File(object):
         self._last_found = value
 
     def changed(self, commit):
-        self.changes += 1
-        self.last_found = commit
+        try:
+            self.changes += 1
+            self.last_found = commit
+        except ValueError as ve:
+            logging.warning(ve)
+            raise FileError("Error during calling change() on file")
 
     def fault(self, commit):
-        self.changed(commit)
-        self.faults += 1
+        try:
+            self.changes += 1
+            self.last_found = commit
+            self.faults += 1
+        except ValueError as ve:
+            logging.warning(ve)
+            raise FileError("Error during calling fault() on file")
 
 
 class FileSet:
@@ -76,7 +106,11 @@ class FileSet:
 
     def get_file(self, file_path, commit=0):
         if file_path not in self.files:
-            f = File(file_path, commit)
+            try:
+                f = File(file_path, commit)
+            except FileError as fe:
+                logging.warning(fe)
+                raise FileSetError("Error during calling get_file()")
             self.files[file_path] = f
             return f
         else:
@@ -98,9 +132,13 @@ class Distance(object):
         if first_commit is None:
             self.occurrence_list = [0]
         else:
+            if first_commit < 0:
+                raise DistanceError("first_commit cannot be negative")
             self.occurrence_list = [first_commit]
 
     def increase_occurrence(self, commit):
+        if commit < 0:
+            raise DistanceError("commit cannot be negative")
         if commit not in self.occurrence_list:
             if commit < self.occurrence_list[-1]:
                 for i in range(len(self.occurrence_list)):
@@ -115,8 +153,13 @@ class Distance(object):
         the current one is there an order of commits in github? -> check this
         If int, how to trace back the int of a parent commit?
         """
-        occurrence = self.get_occurrence(commit)
-        return 1.0/float(occurrence)
+        try:
+            occurrence = self.get_occurrence(commit)
+            return 1.0/float(occurrence)
+        except ZeroDivisionError as zde:
+            logging.warning(zde)
+            raise DistanceError(
+                "Division by zero occurred during get_distance()")
 
     def get_occurrence(self, commit=None):
         # Getting the occurence for a commit number in linear time
@@ -156,7 +199,8 @@ class DistanceSet(object):
         elif file1.path < file2.path:
             return file2.path + file2.path
         else:
-            pass
+            raise DistanceSetError(
+                "_get_distance_key() arguments should be distinct files")
 
     def _get_or_create_distance(self, file1, file2, commit=None):
         key = self._get_distance_key(file1, file2)
@@ -164,11 +208,16 @@ class DistanceSet(object):
         if key in self.distance_dict:
             return (self.distance_dict[key], False)
         else:
-            distance = Distance(file1, file2, commit)
-            self.distance_set.add(distance)
-            self.distance_dict[key] = distance
+            try:
+                distance = Distance(file1, file2, commit)
+                self.distance_set.add(distance)
+                self.distance_dict[key] = distance
 
-            return (distance, True)
+                return (distance, True)
+            except DistanceError as de:
+                logging.warning(de)
+                raise DistanceSetError(
+                    "Error during _get_or_create_distance()")
 
     def _get_occurrences_for_file(self, file_, commit=None):
         ds_for_file = filter(
@@ -179,8 +228,13 @@ class DistanceSet(object):
         for distance in ds_for_file:
             occurrence = distance.get_occurrence(commit)
             if occurrence > 0:
-                distances.append(
-                    (-occurrence, distance.get_other_file(file_)))
+                try:
+                    distances.append(
+                        (-occurrence, distance.get_other_file(file_)))
+                except DistanceError as de:
+                    logging.warning(de)
+                    raise DistanceSetError(
+                        "Error during _get_occurrences_for_file()")
 
         heapq.heapify(distances)
 
@@ -195,7 +249,11 @@ class DistanceSet(object):
         distance, created = self._get_or_create_distance(file1, file2, commit)
 
         if not created:
-            distance.increase_occurrence(commit)
+            try:
+                distance.increase_occurrence(commit)
+            except DistanceError as de:
+                logging.warning(de)
+                raise DistanceSetError("Error during add_occurrence()")
 
     def get_closest_files(self, file_, number, commit=None):
         distance_heap = self._get_occurrences_for_file(file_, commit)

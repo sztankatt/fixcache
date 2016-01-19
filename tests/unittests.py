@@ -83,6 +83,7 @@ class FilemanagementTestCase(unittest.TestCase):
         self.assertEqual(ds.get_closest_files(self.file1, 1)[0], self.file2)
         self.assertEqual(ds.get_closest_files(self.file1, 8),
                          [self.file2, self.file3, self.file4])
+        self.assertEqual(ds.get_closest_files(self.file1, self.file2), 5)
 
 
 class CacheTestCase(unittest.TestCase):
