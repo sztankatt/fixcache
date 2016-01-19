@@ -1,4 +1,4 @@
-import filemanagement
+import logging
 
 
 class Cache(object):
@@ -6,6 +6,7 @@ class Cache(object):
     _miss = False
 
     def __init__(self, size):
+        logging.debug('Cache initialized')
         self.size = size
         self.file_set = set()
 
@@ -76,14 +77,12 @@ class Cache(object):
             return self.miss
 
     def add(self, file_):
-	print "add() called"
         if self._filled():
             self._remove()
 
         self.file_set.add(file_)
 
     def add_multiple(self, files):
-	print "add multiple called"
         files = self._preprocess_multiple(files)
         len_ = len(files)
 

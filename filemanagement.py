@@ -15,9 +15,9 @@ class File(object):
         self.faults = 0
         self.changes = 1
         self.last_found = commit
-        
+
     def __str__(self):
-	return self.path
+        return self.path
 
     @property
     def path(self):
