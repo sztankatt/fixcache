@@ -31,7 +31,7 @@ class File(object):
         try:
             self.path = path
             self.faults = 0
-            self.changes = 1
+            self.changes = 0
             self.last_found = commit
         except ValueError as ve:
             logging.warning(ve)
@@ -66,9 +66,9 @@ class File(object):
 
     @changes.setter
     def changes(self, value):
-        if value < 1:
+        if value < 0:
             raise ValueError(
-                "Each File has changed at least once. %s is incorrect" %
+                "Number of changes cannot be negative for %s" %
                 (value,))
         self._changes = value
 
@@ -99,15 +99,20 @@ class File(object):
             logging.warning(ve)
             raise FileError("Error during calling fault() on file")
 
+    def reset(self):
+        self.changes = 0
+        self.last_found = 0
+        self.faults = 0
+
 
 class FileSet:
     def __init__(self):
         self.files = {}
 
-    def get_file(self, file_path, commit=0):
+    def get_file(self, file_path):
         if file_path not in self.files:
             try:
-                f = File(file_path, commit)
+                f = File(file_path)
             except FileError as fe:
                 logging.warning(fe)
                 raise FileSetError("Error during calling get_file()")
@@ -121,24 +126,32 @@ class FileSet:
 
         return return_list
 
+    def reset(self):
+        for file_ in self.files:
+            self.files[file_].reset()
+
 
 class Distance(object):
-    def __init__(self, file1_in, file2_in, first_commit=None):
+    def __init__(self, file1_in, file2_in):
         # storing the file with longer path as the first one
         self.files = {
                 'file1': file1_in,
                 'file2': file2_in
             }
-        if first_commit is None:
-            self.occurrence_list = [0]
-        else:
-            if first_commit < 0:
-                raise DistanceError("first_commit cannot be negative")
-            self.occurrence_list = [first_commit]
+        self.occurrence_list = []
+
+    def reset(self):
+        del self.occurrence_list
+        self.occurrence_list = []
 
     def increase_occurrence(self, commit):
         if commit < 0:
             raise DistanceError("commit cannot be negative")
+
+        if len(self.occurrence_list) == 0:
+            self.occurrence_list.append(commit)
+            return
+
         if commit not in self.occurrence_list:
             if commit < self.occurrence_list[-1]:
                 for i in range(len(self.occurrence_list)):
@@ -159,7 +172,8 @@ class Distance(object):
         except ZeroDivisionError as zde:
             logging.warning(zde)
             raise DistanceError(
-                "Division by zero occurred during get_distance()")
+                "Division by zero occurred during get_distance()." +
+                "The occurrence is 0")
 
     def get_occurrence(self, commit=None):
         # Getting the occurence for a commit number in linear time
@@ -202,14 +216,14 @@ class DistanceSet(object):
             raise DistanceSetError(
                 "_get_distance_key() arguments should be distinct files")
 
-    def _get_or_create_distance(self, file1, file2, commit=None):
+    def _get_or_create_distance(self, file1, file2):
         key = self._get_distance_key(file1, file2)
 
         if key in self.distance_dict:
             return (self.distance_dict[key], False)
         else:
             try:
-                distance = Distance(file1, file2, commit)
+                distance = Distance(file1, file2)
                 self.distance_set.add(distance)
                 self.distance_dict[key] = distance
 
@@ -241,19 +255,18 @@ class DistanceSet(object):
         return distances
 
     def get_occurrence(self, file1, file2, commit=None):
-        distance, created = self._get_or_create_distance(file1, file2, commit)
+        distance, created = self._get_or_create_distance(file1, file2)
 
         return distance.get_occurrence(commit)
 
     def add_occurrence(self, file1, file2, commit):
-        distance, created = self._get_or_create_distance(file1, file2, commit)
+        distance, created = self._get_or_create_distance(file1, file2)
 
-        if not created:
-            try:
-                distance.increase_occurrence(commit)
-            except DistanceError as de:
-                logging.warning(de)
-                raise DistanceSetError("Error during add_occurrence()")
+        try:
+            distance.increase_occurrence(commit)
+        except DistanceError as de:
+            logging.warning(de)
+            raise DistanceSetError("Error during add_occurrence()")
 
     def get_closest_files(self, file_, number, commit=None):
         distance_heap = self._get_occurrences_for_file(file_, commit)
@@ -263,3 +276,7 @@ class DistanceSet(object):
         files = [heapq.heappop(distance_heap)[1] for i in range(number)]
 
         return files
+
+    def reset(self):
+        for distance in self.distance_set:
+            distance.reset()

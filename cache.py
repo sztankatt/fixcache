@@ -96,7 +96,14 @@ class Cache(object):
             self.file_set = set(files[:self.size])
 
     def flush(self):
+        del self.file_set
         self.file_set = set()
+
+    def reset(self, size=None):
+        self.flush()
+
+        if size is not None:
+            self.size = size
 
 
 class SimpleCache(Cache):
