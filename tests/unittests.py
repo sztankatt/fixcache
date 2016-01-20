@@ -11,7 +11,8 @@ class FilemanagementTestCase(unittest.TestCase):
         self.file3 = filemanagement.File('pathc')
         self.file4 = filemanagement.File('pathd')
         self.file5 = filemanagement.File('pathe')
-        self.distance = filemanagement.Distance(self.file1, self.file2, 0)
+        self.distance = filemanagement.Distance(self.file1, self.file2)
+        self.distance.increase_occurrence(0)
 
     def test_file_operations(self):
         self.file1.changed(10)
@@ -20,10 +21,10 @@ class FilemanagementTestCase(unittest.TestCase):
         self.file2.fault(33)
 
         self.assertEqual(self.file1.last_found, 15)
-        self.assertEqual(self.file1.changes, 3)
+        self.assertEqual(self.file1.changes, 2)
         self.assertEqual(self.file1.faults, 0)
         self.assertEqual(self.file2.faults, 1)
-        self.assertEqual(self.file2.changes, 3)
+        self.assertEqual(self.file2.changes, 2)
 
     def test_file_in_list(self):
         self.file_list = [self.file1, self.file3]
@@ -60,12 +61,13 @@ class FilemanagementTestCase(unittest.TestCase):
 
     def test_distance_set(self):
         ds = filemanagement.DistanceSet()
+        ds.add_occurrence(self.file1, self.file2, 0)
 
         self.assertEqual(ds.get_occurrence(self.file1, self.file2), 1)
         self.assertEqual(ds.get_closest_files(self.file3, 10), [])
 
         distance, created = ds._get_or_create_distance(self.file1, self.file3)
-
+        ds.add_occurrence(self.file1, self.file3, 0)
         self.assertEqual(created, True)
         self.assertEqual(len(distance.occurrence_list), 1)
 
@@ -83,7 +85,6 @@ class FilemanagementTestCase(unittest.TestCase):
         self.assertEqual(ds.get_closest_files(self.file1, 1)[0], self.file2)
         self.assertEqual(ds.get_closest_files(self.file1, 8),
                          [self.file2, self.file3, self.file4])
-        self.assertEqual(ds.get_closest_files(self.file1, self.file2), 5)
 
 
 class CacheTestCase(unittest.TestCase):
