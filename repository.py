@@ -6,7 +6,8 @@ import git
 import logging
 import itertools
 import os
-from constants import REPO_DIR
+import sys
+import constants
 
 
 class RepositoryError(Exception):
@@ -19,26 +20,31 @@ class RepositoryError(Exception):
 
 class Repository(object):
     def __init__(self, repo_dir, cache_ratio=0.1,
-                 distance_to_fetch=1, branch='master'):
+                 distance_to_fetch=None, branch='master',
+                 pre_fetch_size=None):
         # initializing repository variables
         try:
             self.file_distances = fm.DistanceSet()
             self.file_set = fm.FileSet()
             self.commit_order = {}
-            self.distance_to_fetch = distance_to_fetch
             self.cache_ratio = cache_ratio
             self.hit_count = 0
             self.miss_count = 0
             self.repo_dir = repo_dir
 
-            repo_full_path = os.path.join(REPO_DIR, repo_dir)
+            repo_full_path = os.path.join(constants.REPO_DIR, repo_dir)
             self.repo = git.Repo(repo_full_path)
             assert not self.repo.bare
             self.commit_list = list(reversed(
                 list(self.repo.iter_commits(branch))))
 
+            self.file_count = self._get_file_count(self.commit_list[-1])
+            self.cache_size = int(self.cache_ratio*float(self.file_count))
+
             # initializing commit hash to order mapping
-            self.cache = cache.SimpleCache(self._calc_cache_size())
+            self.cache = cache.SimpleCache(self.cache_size)
+            self.distance_to_fetch = self._get_dtf(distance_to_fetch)
+            self.pre_fetch_size = self._get_pfs(pre_fetch_size)
             self._init_commit_order()
         except git.exc.NoSuchPathError:
             raise RepositoryError(
@@ -69,27 +75,36 @@ class Repository(object):
                 'distance_to_fetch has to be a non-negative integer')
         self._distance_to_fetch = value
 
-    def _calc_cache_size(self):
-        cache_size = int(self.cache_ratio*float(
-            self._get_file_count(self.commit_list[-1])))
-        if cache_size <= 0:
-            cache_size = 1
-        return cache_size
+    @property
+    def pre_fetch_size(self):
+        return self._pre_fetch_size
 
-    def reset(self, cache_ratio=None, distance_to_fetch=None):
+    @pre_fetch_size.setter
+    def pre_fetch_size(self, value):
+        if value < 0:
+            raise ValueError(
+                'pre-fetch size has to be a non-negative integer')
+        self._pre_fetch_size = value
+    
+
+    def reset(self, cache_ratio=None, distance_to_fetch=None, pfs=None):
         self.hit_count = 0
         self.miss_count = 0
         self.file_distances.reset()
         self.file_set.reset()
-        cache_size = None
+
         if cache_ratio is not None:
             self.cache_ratio = cache_ratio
-            cache_size = self._calc_cache_size()
+            self.file_count = self._get_file_count(self.commit_list[-1])
+            self.cache_size = int(self.cache_ratio*float(self.file_count))
 
         if distance_to_fetch is not None:
-            self.distance_to_fetch = distance_to_fetch
+            self.distance_to_fetch = self._get_dtf(distance_to_fetch)
 
-        self.cache.reset(cache_size)
+        if pfs is not None:
+            self.pre_fetch_size = self._get_pfs(pfs)
+
+        self.cache.reset(self.cache_size)
 
     def run_fixcache(self):
         for commit in self.commit_list:
@@ -121,16 +136,13 @@ class Repository(object):
                                     self.commit_order[c.hexsha])
 
                             self.cache.add_multiple(cf)
-                else:
-                    for _, path, lines in changed_files:
-                        file_ = self.file_set.get_file(path)
-                        file_.changed(self.commit_order[commit.hexsha])
-                        self.cache.add(file_)
 
-                for _, path, l in created_files:
-                    f = self.file_set.get_file(path)
-                    f.changed(self.commit_order[commit.hexsha])
-                    self.cache.add(f)
+                new_changed_files = [x[1] for x in created_files+changed_files]
+                per_revision_pre_fetch = self._get_per_rev_pre_fetch(
+                    new_changed_files, commit)
+
+                self.cache.add_multiple(
+                    self.file_set.get_multiple(per_revision_pre_fetch))
 
             elif len(parents) == 0:
                 # initial commit
@@ -138,6 +150,40 @@ class Repository(object):
                 self.cache.add_multiple(self.file_set.get_multiple(files))
             else:
                 pass
+
+    def _get_per_rev_pre_fetch(self, file_list, commit):
+        loc_file_list = [(self._get_line_count(x, commit), x) for x in file_list]
+        loc_file_list.sort(reverse=True)
+
+        return [x[1] for x in loc_file_list[:self.pre_fetch_size]]
+
+
+    def _get_dtf(self, dtf):
+        if dtf is None:
+            distance_to_fetch = 1
+            return distance_to_fetch
+
+        if isinstance(dtf, int):
+            return dtf
+        elif isinstance(dtf, float):
+            dtf = int(dtf*float(self.cache_size))
+            if dtf == 0:
+                return 1
+            else:
+                return dtf
+
+    def _get_pfs(self, pfs):
+        if pfs is None:
+            return 1
+        
+        if isinstance(pfs, int):
+            return pfs
+        elif isinstance(pfs, float):
+            pfs = int(pfs*float(self.cache_size))
+            if pfs == 0:
+                return 1
+            else:
+                return pfs
 
     def _init_commit_order(self):
         commit_counter = 0
@@ -173,6 +219,8 @@ class Repository(object):
         line_count = 0
         for commit, lines in self.repo.blame(commit, file_):
             line_count += len(lines)
+
+        return line_count
 
     def _get_line_introducing_commits(self, line_list, file_, commit):
         """Returns the set of commits which introduced lines in a file.
@@ -270,20 +318,52 @@ class Repository(object):
         return len(file_list)
 
 
-# def main():
-#     """Main entry point for the script."""
-#     r = Repository(FACEBOOK_SDK_REPO, cache_ratio=0.1)
-#     # hit_count, miss_count = r.run_fixcache()
-#     print timeit.timeit(r.run_fixcache, number=1)
-#     print r.hit_count
-#     print r.miss_count
+class WindowedRepository(Repository):
+    def __init__(self, window=0.9, *args, **kwargs):
+        super(WindowedRepository, self).__init__(*args, **kwargs)
+        self.window = window
+        commit_list_len = len(self.commit_list)
+        new_len = int(self.window*float(commit_list_len))
+        self.horizon_commit_list = self.commit_list[new_len:]
+        self.commit_list = self.commit_list[:new_len]
+        self.horizon_faulty_file_set = set()
+        self.horizon_normal_file_set = set()
 
-#     r.reset(cache_ratio=0.5)
-#     r.run_fixcache()
+    def window_init(self, window=None):
+        pass
+        # TODO use a single function for reset and init
 
-#     print r.hit_count
-#     print r.miss_count
-#     # print hit_count, miss_count
+    def reset(self, window=None, *args, **kwargs):
+        super(WindowedRepository, self).reset(*args, **kwargs)
+        if window is not None:
+            self.window = window
+            commit_list_len = len(self.commit_list)
+            new_len = int(self.window*float(commit_list_len))
+            c_list = self.commit_list + self.horizon_commit_list
+            del self.horizon_commit_list
+            del self.commit_list
 
-# if __name__ == '__main__':
-#     sys.exit(main())
+            self.commit_list = c_list[:new_len]
+            self.horizon_commit_list = c_list[new_len:]
+
+        self.reset_horizon()
+
+    def reset_horizon(self):
+        del self.horizon_faulty_file_set
+        self.horizon_faulty_file_set = set()
+
+        del self.horizon_normal_file_set
+        self.horizon_normal_file_set = set()
+
+
+def main():
+    """Main entry point for the script."""
+    r = WindowedRepository(
+        window=0.9, repo_dir=constants.FACEBOOK_SDK_REPO, cache_ratio=0.1)
+    print len(r.commit_list)
+    r.run_fixcache()
+    print r.hit_count
+    print r.miss_count
+
+if __name__ == '__main__':
+    sys.exit(main())

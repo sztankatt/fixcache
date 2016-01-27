@@ -130,6 +130,9 @@ class FileSet:
         for file_ in self.files:
             self.files[file_].reset()
 
+    def file_in(self, file_):
+        return file_ in self.files
+
 
 class Distance(object):
     def __init__(self, file1_in, file2_in):

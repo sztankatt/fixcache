@@ -84,6 +84,7 @@ class Cache(object):
 
     def add_multiple(self, files):
         files = self._preprocess_multiple(files)
+
         len_ = len(files)
 
         if len_ == 1:
