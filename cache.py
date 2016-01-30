@@ -65,9 +65,10 @@ class Cache(object):
 
         return space
 
-    def _preprocess_multiple(self, files):
+    def _preprocess_multiple(self, files, pre_sort=True):
         files = filter(lambda x: x not in self.file_set, files)
-        files.sort(key=lambda x: x.last_found, reverse=True)
+        if pre_sort:
+            files.sort(key=lambda x: x.last_found, reverse=True)
         return files
 
     def file_in(self, file_):
@@ -82,7 +83,7 @@ class Cache(object):
 
         self.file_set.add(file_)
 
-    def add_multiple(self, files):
+    def add_multiple(self, files, pre_sort=True):
         files = self._preprocess_multiple(files)
 
         len_ = len(files)

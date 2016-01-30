@@ -39,7 +39,7 @@ class Repository(object):
                 list(self.repo.iter_commits(branch))))
 
             self.file_count = self._get_file_count(self.commit_list[-1])
-            self.cache_size = int(self.cache_ratio*float(self.file_count))
+            self.cache_size = int(self.cache_ratio * float(self.file_count))
 
             # initializing commit hash to order mapping
             self.cache = cache.SimpleCache(self.cache_size)
@@ -85,7 +85,6 @@ class Repository(object):
             raise ValueError(
                 'pre-fetch size has to be a non-negative integer')
         self._pre_fetch_size = value
-    
 
     def reset(self, cache_ratio=None, distance_to_fetch=None, pfs=None):
         self.hit_count = 0
@@ -96,7 +95,9 @@ class Repository(object):
         if cache_ratio is not None:
             self.cache_ratio = cache_ratio
             self.file_count = self._get_file_count(self.commit_list[-1])
-            self.cache_size = int(self.cache_ratio*float(self.file_count))
+            self.cache_size = int(self.cache_ratio * float(self.file_count))
+            if self.cache_size == 0:
+                self.cache_size = 1
 
         if distance_to_fetch is not None:
             self.distance_to_fetch = self._get_dtf(distance_to_fetch)
@@ -114,7 +115,8 @@ class Repository(object):
                 created_files = filter(lambda x: x[0] == 'created', files)
                 changed_files = filter(lambda x: x[0] == 'changed', files)
 
-                self._update_distance_set(created_files+changed_files, commit)
+                self._update_distance_set(
+                    created_files + changed_files, commit)
 
                 if parsing.is_fix_commit(commit.message):
                     for _, path, lines in changed_files:
@@ -137,7 +139,8 @@ class Repository(object):
 
                             self.cache.add_multiple(cf)
 
-                new_changed_files = [x[1] for x in created_files+changed_files]
+                new_changed_files = [
+                    x[1] for x in created_files + changed_files]
                 per_revision_pre_fetch = self._get_per_rev_pre_fetch(
                     new_changed_files, commit)
 
@@ -152,11 +155,11 @@ class Repository(object):
                 pass
 
     def _get_per_rev_pre_fetch(self, file_list, commit):
-        loc_file_list = [(self._get_line_count(x, commit), x) for x in file_list]
+        loc_file_list = [
+            (self._get_line_count(x, commit), x) for x in file_list]
         loc_file_list.sort(reverse=True)
 
         return [x[1] for x in loc_file_list[:self.pre_fetch_size]]
-
 
     def _get_dtf(self, dtf):
         if dtf is None:
@@ -166,7 +169,7 @@ class Repository(object):
         if isinstance(dtf, int):
             return dtf
         elif isinstance(dtf, float):
-            dtf = int(dtf*float(self.cache_size))
+            dtf = int(dtf * float(self.cache_size))
             if dtf == 0:
                 return 1
             else:
@@ -175,11 +178,11 @@ class Repository(object):
     def _get_pfs(self, pfs):
         if pfs is None:
             return 1
-        
+
         if isinstance(pfs, int):
             return pfs
         elif isinstance(pfs, float):
-            pfs = int(pfs*float(self.cache_size))
+            pfs = int(pfs * float(self.cache_size))
             if pfs == 0:
                 return 1
             else:
@@ -249,8 +252,8 @@ class Repository(object):
         finally:
             pass
 
-        for start_line, end_line in line_list:
-            for commit, line in commit_list[start_line:start_line+end_line+1]:
+        for start_l, end_l in line_list:
+            for commit, line in commit_list[start_l:start_l + end_l + 1]:
                 if parsing.important_line(line):
                     commit_set.append(commit)
 
@@ -323,7 +326,7 @@ class WindowedRepository(Repository):
         super(WindowedRepository, self).__init__(*args, **kwargs)
         self.window = window
         commit_list_len = len(self.commit_list)
-        new_len = int(self.window*float(commit_list_len))
+        new_len = int(self.window * float(commit_list_len))
         self.horizon_commit_list = self.commit_list[new_len:]
         self.commit_list = self.commit_list[:new_len]
         self.horizon_faulty_file_set = set()
@@ -338,7 +341,7 @@ class WindowedRepository(Repository):
         if window is not None:
             self.window = window
             commit_list_len = len(self.commit_list)
-            new_len = int(self.window*float(commit_list_len))
+            new_len = int(self.window * float(commit_list_len))
             c_list = self.commit_list + self.horizon_commit_list
             del self.horizon_commit_list
             del self.commit_list

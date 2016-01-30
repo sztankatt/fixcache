@@ -23,20 +23,26 @@ def basic_fixcache_analyser(repo, cache_ratio, distance_to_fetch, pfs):
         time)
 
 
-def analyse_by_cache_ratio(r, dtf, pfs, progressive=False, filename=None):
-    dir_ = os.path.join(constants.CSV_ROOT, r.repo_dir)
+def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
+    dir_ = os.path.join(constants.CSV_ROOT, repo.repo_dir)
 
     if not os.path.exists(dir_):
         os.makedirs(dir_)
 
-    if filename is None:
-        if progressive:
-            file_ = os.path.join(
-                dir_, 'analyse_by_cache_ratio_progressive_dtf_'+str(dtf)+'_pfs_'+str(pfs)+'.csv')
-        else:
-            file_ = os.path.join(dir_, 'analyse_by_cache_ratio_'+str(dtf)+'_pfs_'+str(pfs)+'.csv')
+    if progressive:
+        file_ = os.path.join(
+            dir_, ('analyse_by_cache_ratio_progressive_dtf_' + str(dtf) +
+                   '_pfs_' + str(pfs) + '.csv')
+        )
     else:
-        file_ = os.path.join(dir_, filename+str(dtf)+'.csv')
+        file_ = os.path.join(
+            dir_, ('analyse_by_cache_ratio_' + str(dtf) + '_pfs_' + str(pfs) +
+                   '.csv'))
+
+    if os.path.exists(file_):
+        print "Exists"
+        return
+
     cache_ratio_range = numpy.arange(0.01, 1.01, 0.01)
     with open(file_, 'wb') as out:
         csv_out = csv.writer(out)
@@ -44,20 +50,25 @@ def analyse_by_cache_ratio(r, dtf, pfs, progressive=False, filename=None):
             ['repo_dir', 'hits', 'misses', 'cache_size', 'dtf', 'pfs', 'ttr'])
         for ratio in cache_ratio_range:
             logging.info(
-                'Running fixcache for %s with ratio of %s and dtf of %s, with pfs of %s' %
-                (r.repo_dir, ratio, dtf, pfs))
+                ('Running fixcache for %s with ratio of %s and dtf of %s, ' +
+                 'with pfs of %s') %
+                (repo.repo_dir, ratio, dtf, pfs))
 
             csv_out.writerow(basic_fixcache_analyser(
-                r, ratio, dtf, pfs))
+                repo, ratio, dtf, pfs))
 
 
 def main():
     logging.basicConfig(level=logging.INFO)
-    # r = Repository(constants.FACEBOOK_SDK_REPO)
-    boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
-    #boto_repo = Repository(constants.BOTO_REPO, branch='develop')
+    facebook_sdk_repo = Repository(constants.FACEBOOK_SDK_REPO)
+    # boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
+    # boto_repo = Repository(constants.BOTO_REPO, branch='develop')
+
+    # boto3 tests
     for i in [0.1, 0.15, 0.2, 0.25]:
-        analyse_by_cache_ratio(boto3_repo, i, pfs=i, progressive=True)
+        for j in [0.1, 0.15, 0.2, 0.25]:
+            analyse_by_cache_ratio(facebook_sdk_repo, dtf=i, pfs=j)
+    # analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=i, progressive=True)
 
     # analyse_by_cache_ratio(boto_repo, 1)
 if __name__ == '__main__':
