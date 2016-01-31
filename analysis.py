@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 from repository import Repository
-import numpy
 import sys
 import constants
 import timeit
@@ -43,7 +42,7 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
         print "Exists"
         return
 
-    cache_ratio_range = numpy.arange(0.01, 1.01, 0.01)
+    cache_ratio_range = [(x + 1) / 100.0 for x in range(100)]
     with open(file_, 'wb') as out:
         csv_out = csv.writer(out)
         csv_out.writerow(
