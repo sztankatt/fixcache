@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 from repository import Repository
-import sys
+from daemonize import Deamonize
 import constants
 import timeit
 import os
@@ -64,7 +64,6 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
     facebook_sdk_repo = Repository(constants.FACEBOOK_SDK_REPO)
     boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
     # boto_repo = Repository(constants.BOTO_REPO, branch='develop')
@@ -83,4 +82,13 @@ def main():
 
     # analyse_by_cache_ratio(boto_repo, 1)
 if __name__ == '__main__':
-    sys.exit(main())
+    pid = "/home/tomi/fixcache.pid"
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    fh = logging.FileHandler("/home/tomi/fixcache/logs/fixcache.log", "w")
+    fh.setLevel(logging.INFO)
+    logger.addHandler(fh)
+    keep_fds = [fh.stream.fileno()]
+
+    daemon = Deamonize(app="fixcache", pid=pid, action=main, keep_fds=keep_fds)
+    daemon.start()
