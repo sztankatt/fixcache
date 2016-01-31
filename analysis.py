@@ -6,6 +6,7 @@ import timeit
 import os
 import csv
 import logging
+import datetime
 
 
 def basic_fixcache_analyser(repo, cache_ratio, distance_to_fetch, pfs):
@@ -24,8 +25,8 @@ def basic_fixcache_analyser(repo, cache_ratio, distance_to_fetch, pfs):
 
 def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
     logging.info(
-        "Starting fixcache analysis for %s with dtf=%s, pfs=%s" %
-        (repo.repo_dir, dtf, pfs))
+        "Starting fixcache analysis for %s with dtf=%s, pfs=%s, at %s" %
+        (repo.repo_dir, dtf, pfs, datetime.datetime.now()))
     dir_ = os.path.join(constants.CSV_ROOT, repo.repo_dir)
 
     if not os.path.exists(dir_):
@@ -58,6 +59,8 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
 
             csv_out.writerow(basic_fixcache_analyser(
                 repo, ratio, dtf, pfs))
+
+    logging.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
 
 def main():
