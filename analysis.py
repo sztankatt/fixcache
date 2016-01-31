@@ -23,6 +23,9 @@ def basic_fixcache_analyser(repo, cache_ratio, distance_to_fetch, pfs):
 
 
 def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
+    logging.info(
+        "Starting fixcache analysis for %s with dtf=%s, pfs=%s" %
+        (repo.repo_dir, dtf, pfs))
     dir_ = os.path.join(constants.CSV_ROOT, repo.repo_dir)
 
     if not os.path.exists(dir_):
@@ -48,7 +51,7 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
         csv_out.writerow(
             ['repo_dir', 'hits', 'misses', 'cache_size', 'dtf', 'pfs', 'ttr'])
         for ratio in cache_ratio_range:
-            logging.info(
+            logging.debug(
                 ('Running fixcache for %s with ratio of %s and dtf of %s, ' +
                  'with pfs of %s') %
                 (repo.repo_dir, ratio, dtf, pfs))
