@@ -65,7 +65,7 @@ def main():
 
     # boto3 tests
     for i in [0.1, 0.15, 0.2, 0.25]:
-        for j in [0.1, 0.15, 0.2, 0.25]:
+        for j in [0.1, 0.15, 0.2, 0.25, 0.3]:
             analyse_by_cache_ratio(facebook_sdk_repo, dtf=i, pfs=j)
     # analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=i, progressive=True)
 
