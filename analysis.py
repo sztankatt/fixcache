@@ -60,13 +60,19 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
 def main():
     logging.basicConfig(level=logging.INFO)
     facebook_sdk_repo = Repository(constants.FACEBOOK_SDK_REPO)
-    # boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
+    boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
     # boto_repo = Repository(constants.BOTO_REPO, branch='develop')
 
     # boto3 tests
-    for i in [0.1, 0.15, 0.2, 0.25]:
-        for j in [0.1, 0.15, 0.2, 0.25, 0.3]:
+    variables = [0.1, 0.15, 0.2, 0.25, 0.3]
+    for i in variables:
+        for j in variables:
             analyse_by_cache_ratio(facebook_sdk_repo, dtf=i, pfs=j)
+
+    for i in variables:
+        for j in variables:
+            analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=j)
+
     # analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=i, progressive=True)
 
     # analyse_by_cache_ratio(boto_repo, 1)
