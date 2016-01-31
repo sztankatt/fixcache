@@ -9,6 +9,14 @@ import logging
 import datetime
 
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+fh = logging.FileHandler(constants.LOGFILE, "w")
+fh.setLevel(logging.INFO)
+logger.addHandler(fh)
+keep_fds = [fh.stream.fileno()]
+
+
 def basic_fixcache_analyser(repo, cache_ratio, distance_to_fetch, pfs):
     repo.reset(cache_ratio, distance_to_fetch, pfs)
     time = timeit.timeit(repo.run_fixcache, number=1)
@@ -24,7 +32,7 @@ def basic_fixcache_analyser(repo, cache_ratio, distance_to_fetch, pfs):
 
 
 def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
-    logging.info(
+    logger.info(
         "Starting fixcache analysis for %s with dtf=%s, pfs=%s, at %s" %
         (repo.repo_dir, dtf, pfs, datetime.datetime.now()))
     dir_ = os.path.join(constants.CSV_ROOT, repo.repo_dir)
@@ -43,7 +51,7 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
                    '.csv'))
 
     if os.path.exists(file_):
-        print "Exists"
+        logger.info('Analysis exists.\nExit\n')
         return
 
     cache_ratio_range = [(x + 1) / 100.0 for x in range(100)]
@@ -60,13 +68,13 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
             csv_out.writerow(basic_fixcache_analyser(
                 repo, ratio, dtf, pfs))
 
-    logging.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
+    logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
 
 def main():
     facebook_sdk_repo = Repository(constants.FACEBOOK_SDK_REPO)
     boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
-    # boto_repo = Repository(constants.BOTO_REPO, branch='develop')
+    boto_repo = Repository(constants.BOTO_REPO, branch='develop')
 
     # boto3 tests
     variables = [0.1, 0.15, 0.2, 0.25, 0.3]
@@ -78,17 +86,15 @@ def main():
         for j in variables:
             analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=j)
 
+    for i in variables:
+        for j in variables:
+            analyse_by_cache_ratio(boto_repo, dtf=i, pfs=j)
+
     # analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=i, progressive=True)
 
     # analyse_by_cache_ratio(boto_repo, 1)
 if __name__ == '__main__':
-    pid = "/home/tomi/fixcache.pid"
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fh = logging.FileHandler("/home/tomi/dissertation/fixcache/logs/fixcache.log", "w")
-    fh.setLevel(logging.INFO)
-    logger.addHandler(fh)
-    keep_fds = [fh.stream.fileno()]
+    pid = os.path.join(constants.BASE_DIR, 'fixcache.pid')
 
     daemon = Daemonize(app="fixcache", pid=pid, action=main, keep_fds=keep_fds)
     daemon.start()
