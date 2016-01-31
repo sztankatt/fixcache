@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 from repository import Repository
-from daemonize import Deamonize
+from daemonize import Daemonize
 import constants
 import timeit
 import os
@@ -85,10 +85,10 @@ if __name__ == '__main__':
     pid = "/home/tomi/fixcache.pid"
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
-    fh = logging.FileHandler("/home/tomi/fixcache/logs/fixcache.log", "w")
+    fh = logging.FileHandler("/home/tomi/dissertation/fixcache/logs/fixcache.log", "w")
     fh.setLevel(logging.INFO)
     logger.addHandler(fh)
     keep_fds = [fh.stream.fileno()]
 
-    daemon = Deamonize(app="fixcache", pid=pid, action=main, keep_fds=keep_fds)
+    daemon = Daemonize(app="fixcache", pid=pid, action=main, keep_fds=keep_fds)
     daemon.start()
