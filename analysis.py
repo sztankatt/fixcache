@@ -72,29 +72,31 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
 
 
 def main():
-    facebook_sdk_repo = Repository(constants.FACEBOOK_SDK_REPO)
-    boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
-    boto_repo = Repository(constants.BOTO_REPO, branch='develop')
+    # facebook_sdk_repo = Repository(constants.FACEBOOK_SDK_REPO)
+    # boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
+    # boto_repo = Repository(constants.BOTO_REPO, branch='develop')
+    raspberry_io_repo = Repository('raspberryio')
 
     # boto3 tests
     variables = [0.1, 0.15, 0.2, 0.25, 0.3]
+    # for i in variables:
+    #     for j in variables:
+    #         analyse_by_cache_ratio(facebook_sdk_repo, dtf=i, pfs=j)
+
+    # for i in variables:
+    #     for j in variables:
+    #         analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=j)
+
+    # for i in variables:
+    #     for j in variables:
+    #         analyse_by_cache_ratio(boto_repo, dtf=i, pfs=j)
     for i in variables:
         for j in variables:
-            analyse_by_cache_ratio(facebook_sdk_repo, dtf=i, pfs=j)
-
-    for i in variables:
-        for j in variables:
-            analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=j)
-
-    for i in variables:
-        for j in variables:
-            analyse_by_cache_ratio(boto_repo, dtf=i, pfs=j)
-
-    # analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=i, progressive=True)
+            analyse_by_cache_ratio(raspberry_io_repo, dtf=i, pfs=j)
 
     # analyse_by_cache_ratio(boto_repo, 1)
 if __name__ == '__main__':
-    pid = os.path.join(constants.BASE_DIR, 'fixcache.pid')
+    pid = os.path.join(constants.BASE_DIR, 'fixcache2.pid')
 
     daemon = Daemonize(app="fixcache", pid=pid, action=main, keep_fds=keep_fds)
     daemon.start()
