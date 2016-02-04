@@ -107,9 +107,9 @@ def analyse_by_pfs_dtf(repo, cache_ratio, pfs_set, dtf_set):
 
 def main():
     # facebook_sdk_repo = Repository(constants.FACEBOOK_SDK_REPO)
-    boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
+    # boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
     # boto_repo = Repository(constants.BOTO_REPO, branch='develop')
-    # raspberry_io_repo = Repository('raspberryio')
+    raspberry_io_repo = Repository('raspberryio')
 
     # boto3 tests
     dtf_set = [(x + 1) * 5 / 100.0 for x in range(20)]
@@ -129,9 +129,9 @@ def main():
     #    for j in variables:
     #        analyse_by_cache_ratio(raspberry_io_repo, dtf=i, pfs=j)
     analyse_by_pfs_dtf(
-        boto3_repo, cache_ratio=0.2, pfs_set=pfs_set, dtf_set=dtf_set)
+        raspberry_io_repo, cache_ratio=0.25, pfs_set=pfs_set, dtf_set=dtf_set)
     analyse_by_pfs_dtf(
-        boto3_repo, cache_ratio=0.25, pfs_set=pfs_set, dtf_set=dtf_set)
+        raspberry_io_repo, cache_ratio=0.2, pfs_set=pfs_set, dtf_set=dtf_set)
 
     # analyse_by_cache_ratio(boto_repo, 1)
 if __name__ == '__main__':
