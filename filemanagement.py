@@ -27,12 +27,13 @@ class DistanceSetError(iFilemanagementError):
 
 
 class File(object):
-    def __init__(self, path, commit=0):
+    def __init__(self, path, commit=0, line_count=0):
         try:
             self.path = path
             self.faults = 0
             self.changes = 0
             self.last_found = commit
+            self.line_count = line_count
         except ValueError as ve:
             logging.warning(ve)
             raise FileError("Error during initialization of file")
@@ -49,6 +50,14 @@ class File(object):
         if value == "":
             raise ValueError("Path of a File cannot be empty")
         self._path = value
+
+    @property
+    def line_count(self):
+        return self._line_count
+
+    @line_count.setter
+    def line_count(self, value):
+        self._line_count = value
 
     @property
     def faults(self):
@@ -99,20 +108,21 @@ class File(object):
             logging.warning(ve)
             raise FileError("Error during calling fault() on file")
 
-    def reset(self):
+    def reset(self, line_count=0):
         self.changes = 0
         self.last_found = 0
         self.faults = 0
+        self.line_count = line_count
 
 
 class FileSet:
     def __init__(self):
         self.files = {}
 
-    def get_file(self, file_path):
+    def get_file(self, file_path, line_count=0):
         if file_path not in self.files:
             try:
-                f = File(file_path)
+                f = File(file_path, line_count)
             except FileError as fe:
                 logging.warning(fe)
                 raise FileSetError("Error during calling get_file()")

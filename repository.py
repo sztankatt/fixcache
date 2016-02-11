@@ -9,6 +9,14 @@ import os
 import sys
 import constants
 
+# TODO:
+# 1) introduce line count to the file. increase at each commit, if 0,
+#    file deleted
+# 2) only call get diff when line introduction is needed, otherwise
+#    use stat
+# 3) revise parsing, correclty is not working correclty
+# 4) make all the pick-top-k functions nlogk using a heap
+
 
 class RepositoryError(Exception):
     def __init__(self, value):
@@ -109,8 +117,10 @@ class Repository(object):
 
     def run_fixcache(self):
         for commit in self.commit_list:
+            # print commit.stats.files
             parents = commit.parents
             if len(parents) == 1:
+                # print files
                 files = self._get_diff_file_list(commit, parents[0])
                 created_files = filter(lambda x: x[0] == 'created', files)
                 changed_files = filter(lambda x: x[0] == 'changed', files)
@@ -132,6 +142,7 @@ class Repository(object):
                                 lines, path, commit)
 
                             for c in line_intr_c:
+                                # get closest files is nlogk, so optimal
                                 cf = self.file_distances.get_closest_files(
                                     file_,
                                     self.distance_to_fetch,
@@ -147,13 +158,14 @@ class Repository(object):
                 self.cache.add_multiple(
                     self.file_set.get_multiple(per_revision_pre_fetch))
 
+                break
+
             elif len(parents) == 0:
                 # initial commit
                 files = self._get_commit_tree_files(commit)
                 self.cache.add_multiple(self.file_set.get_multiple(files))
             else:
                 pass
-
     def _get_per_rev_pre_fetch(self, file_list, commit):
         loc_file_list = [
             (self._get_line_count(x, commit), x) for x in file_list]

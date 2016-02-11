@@ -12,6 +12,7 @@ def important_line(line):
 def get_deletes(line):
         """parses a diff line, to get the deleted lines in that diff.
         If the line parsed isn't a delete line, returns None"""
+        print line
         regex1 = r'@@\s-(?P<start_line>\d+),(?P<line_num>\d+)'
         regex2 = r'@@\s-(?P<start_line>\d+),'
         pattern1 = re.compile(regex1)

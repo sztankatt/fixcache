@@ -11,6 +11,7 @@ from graph_data import graph_data
 
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 
 def file_to_csv_by_name(repository_name, file_):
@@ -37,7 +38,10 @@ def file_to_csv(repository_name, pfs, dtf):
 
 def calc_hit_rate(x, y):
     """Calculate hit rate based on hit and miss value."""
-    return float(x) / (int(x) + int(y))
+    lookups = int(x) + int(y)
+    print x, y, lookups
+    hit_rate = float(x) / float(lookups)
+    return hit_rate
 
 
 def get_column(csv_reader, col_name):
@@ -123,24 +127,36 @@ def plot_one(repo_name, pfs, dtf, fig_name=None):
 def plot_fixed_cache_rate(repo_name, cache_ratio, fig_name=None):
     csv_reader = csv_reader = file_to_csv_by_name(
         repo_name,
-        'analyse_by_fixed_cache_0.15.csv')
+        'analyse_by_fixed_cache_%s.csv' % (cache_ratio,))
 
     if csv_reader is None:
         return
 
     hit_rate = get_column(csv_reader, 'hit_rate')
-    pfs_size = [float(x) * 100 / 23 for x in get_column(csv_reader, 'pfs')]
-    dtf_size = [float(x) * 100 / 23 for x in get_column(csv_reader, 'dtf')]
+    cache_size = get_column(csv_reader, 'cache_size')[0]
+    pfs_size = [
+        float(x) * 100 / int(cache_size) for x in get_column(csv_reader, 'pfs')
+    ]
+    dtf_size = [
+        float(x) * 100 / int(cache_size) for x in get_column(csv_reader, 'dtf')
+    ]
+    # pfs_size = get_column(csv_reader, 'pfs')
+    # dtf_size = get_column(csv_reader, 'dtf')
+    sc = plt.scatter(pfs_size, dtf_size, s=80,
+                     color=[str(x) for x in hit_rate],
+                     cmap=plt.cm.viridis)
 
-    plt.scatter(pfs_size, dtf_size, s=100,
-                color=[str(x) for x in hit_rate],
-                cmap=plt.cm.autumn)
+    print hit_rate
 
     plt.title(
-        'dtf and pfs for %s with cahe_ratio=%s' % (repo_name, cache_ratio))
+        'dtf and pfs for %s.git with cahe_ratio=%s' % (repo_name, cache_ratio))
 
     plt.ylabel('dtf (% of cache size)')
     plt.xlabel('pfs (% of cache size)')
+
+    fig = plt.gcf()
+    axcb = fig.colorbar(sc)
+    axcb.set_label('Hit rate')
 
     plt.show()
 
