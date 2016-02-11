@@ -1,33 +1,56 @@
+"""
+Filemanagement module used by Repository.
+
+It handles the backend for Fixcache file management.
+"""
 import heapq
 import logging
 
 
-class iFilemanagementError(Exception):
+class IFilemanagementError(Exception):
+    """FilemanagementError interface."""
+
     def __init__(self, value):
+        """Overwrite default init."""
         self.value = value
 
     def __str__(self):
+        """Overwrite default string repr."""
         return repr(self.value)
 
 
-class DistanceError(iFilemanagementError):
+class DistanceError(IFilemanagementError):
+    """Simple distanceerror."""
+
     pass
 
 
-class FileError(iFilemanagementError):
+class FileError(IFilemanagementError):
+    """Simple fileerror."""
+
     pass
 
 
-class FileSetError(iFilemanagementError):
+class FileSetError(IFilemanagementError):
+    """Error used by the FileSet class."""
+
     pass
 
 
-class DistanceSetError(iFilemanagementError):
+class DistanceSetError(IFilemanagementError):
+    """Error used by the DistanceSet class."""
+
     pass
 
 
 class File(object):
+    """File object used by the FileSet class.
+
+    Represents a file in the fixcache algorithms backend.
+    """
+
     def __init__(self, path, commit=0, line_count=0):
+        """File initialization."""
         try:
             self.path = path
             self.faults = 0
@@ -39,10 +62,12 @@ class File(object):
             raise FileError("Error during initialization of file")
 
     def __str__(self):
+        """File string representation."""
         return self.path
 
     @property
     def path(self):
+        """The absolute path to a File in the repository."""
         return self._path
 
     @path.setter
@@ -53,6 +78,7 @@ class File(object):
 
     @property
     def line_count(self):
+        """The line count of a file. This value evolves."""
         return self._line_count
 
     @line_count.setter
@@ -61,6 +87,7 @@ class File(object):
 
     @property
     def faults(self):
+        """The number of faults for a file. This value evolves."""
         return self._faults
 
     @faults.setter
@@ -71,6 +98,7 @@ class File(object):
 
     @property
     def changes(self):
+        """The number of changes for a file. This value evolves."""
         return self._changes
 
     @changes.setter
@@ -83,6 +111,7 @@ class File(object):
 
     @property
     def last_found(self):
+        """The last commit number when the file was found."""
         return self._last_found
 
     @last_found.setter
@@ -92,6 +121,7 @@ class File(object):
         self._last_found = value
 
     def changed(self, commit):
+        """Called when file was changed."""
         try:
             self.changes += 1
             self.last_found = commit
@@ -100,6 +130,11 @@ class File(object):
             raise FileError("Error during calling change() on file")
 
     def fault(self, commit):
+        """Called when file had a fault.
+
+        Explicitly calls changed().
+
+        """
         try:
             self.changes += 1
             self.last_found = commit
@@ -109,6 +144,7 @@ class File(object):
             raise FileError("Error during calling fault() on file")
 
     def reset(self, line_count=0):
+        """Re-set the given file, called when analysis restarted."""
         self.changes = 0
         self.last_found = 0
         self.faults = 0
@@ -116,10 +152,14 @@ class File(object):
 
 
 class FileSet:
+    """FileSet object, an abstract view of files used by Fixcache."""
+
     def __init__(self):
+        """Initialization of the class."""
         self.files = {}
 
     def get_file(self, file_path, line_count=0):
+        """Return the file by file path. If not present, create one."""
         if file_path not in self.files:
             try:
                 f = File(file_path, line_count)
@@ -132,32 +172,58 @@ class FileSet:
             return self.files[file_path]
 
     def get_multiple(self, files):
+        """Return multiple files by a list of file paths."""
         return_list = [self.get_file(path) for path in files]
 
         return return_list
 
     def reset(self):
+        """Reset all the files in the set."""
         for file_ in self.files:
             self.files[file_].reset()
 
     def file_in(self, file_):
+        """Check whether a file is present in the set."""
         return file_ in self.files
+
+    def get_and_update_multiple(self, git_stat):
+        """Receive git stat as an input, returns the file objects."""
+        files = []
+        for path in git_stat:
+            file_ = self.get_file(path)
+            line_change = (git_stat[path]['insertions'] -
+                           git_stat[path]['deletions'])
+            file_.line_count += line_change
+            files.append(file_)
+
+        return files
 
 
 class Distance(object):
+    """An abstract view of the distance object.
+
+    Stores two file pointers to two files, and their co-occurrence.
+    """
+
     def __init__(self, file1_in, file2_in):
+        """Initialization."""
         # storing the file with longer path as the first one
         self.files = {
-                'file1': file1_in,
-                'file2': file2_in
-            }
+            'file1': file1_in,
+            'file2': file2_in
+        }
         self.occurrence_list = []
 
     def reset(self):
+        """Reset the distance between two files."""
         del self.occurrence_list
         self.occurrence_list = []
 
     def increase_occurrence(self, commit):
+        """Increse the occurrence.
+
+        Called when two files are present together in a commit.
+        """
         if commit < 0:
             raise DistanceError("commit cannot be negative")
 
@@ -175,13 +241,10 @@ class Distance(object):
                 self.occurrence_list.append(commit)
 
     def get_distance(self, commit=None):
-        """hash or int? if hash, how to know if between which commits is
-        the current one is there an order of commits in github? -> check this
-        If int, how to trace back the int of a parent commit?
-        """
+        """Return the distance which is 1/occurrence."""
         try:
             occurrence = self.get_occurrence(commit)
-            return 1.0/float(occurrence)
+            return 1.0 / float(occurrence)
         except ZeroDivisionError as zde:
             logging.warning(zde)
             raise DistanceError(
@@ -189,7 +252,7 @@ class Distance(object):
                 "The occurrence is 0")
 
     def get_occurrence(self, commit=None):
-        # Getting the occurence for a commit number in linear time
+        """Return the occurence for a commit number in linear time."""
         if commit is None:
             return len(self.occurrence_list)
 
@@ -205,6 +268,7 @@ class Distance(object):
         return counter
 
     def get_other_file(self, file_in):
+        """Given a file path return the other file in the distance."""
         if self.files['file1'].path == file_in.path:
             return self.files['file2']
         elif self.files['file2'].path == file_in.path:
@@ -216,7 +280,10 @@ class Distance(object):
 
 
 class DistanceSet(object):
+    """An abstract view of the set of distances used by Fixcache."""
+
     def __init__(self):
+        """Initialization."""
         self.distance_set = set()
         self.distance_dict = {}
 
@@ -268,11 +335,13 @@ class DistanceSet(object):
         return distances
 
     def get_occurrence(self, file1, file2, commit=None):
+        """Return the occurrence between two files."""
         distance, created = self._get_or_create_distance(file1, file2)
 
         return distance.get_occurrence(commit)
 
     def add_occurrence(self, file1, file2, commit):
+        """Add occurrence between two files."""
         distance, created = self._get_or_create_distance(file1, file2)
 
         try:
@@ -282,6 +351,7 @@ class DistanceSet(object):
             raise DistanceSetError("Error during add_occurrence()")
 
     def get_closest_files(self, file_, number, commit=None):
+        """Given a file returns the closest files."""
         distance_heap = self._get_occurrences_for_file(file_, commit)
         if len(distance_heap) < number:
             number = len(distance_heap)
@@ -291,5 +361,6 @@ class DistanceSet(object):
         return files
 
     def reset(self):
+        """Reset the distance set object."""
         for distance in self.distance_set:
             distance.reset()
