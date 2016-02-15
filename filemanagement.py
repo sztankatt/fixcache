@@ -5,6 +5,7 @@ It handles the backend for Fixcache file management.
 """
 import heapq
 import logging
+import helper_functions
 
 
 class IFilemanagementError(Exception):
@@ -39,6 +40,12 @@ class FileSetError(IFilemanagementError):
 
 class DistanceSetError(IFilemanagementError):
     """Error used by the DistanceSet class."""
+
+    pass
+
+
+class DeprecatedError(IFilemanagementError):
+    """Raise if function not used anymore."""
 
     pass
 
@@ -136,8 +143,6 @@ class File(object):
 
         """
         try:
-            self.changes += 1
-            self.last_found = commit
             self.faults += 1
         except ValueError as ve:
             logging.warning(ve)
@@ -158,22 +163,26 @@ class FileSet:
         """Initialization of the class."""
         self.files = {}
 
-    def get_file(self, file_path, line_count=0):
+    def get_or_create_file(self, file_path, commit_num=0, line_count=0):
         """Return the file by file path. If not present, create one."""
+        created = True
         if file_path not in self.files:
             try:
-                f = File(file_path, line_count)
+                f = File(file_path, commit=commit_num, line_count=line_count)
             except FileError as fe:
                 logging.warning(fe)
                 raise FileSetError("Error during calling get_file()")
             self.files[file_path] = f
-            return f
+            f.changed(commit_num)
+            return (created, f)
         else:
-            return self.files[file_path]
+            created = False
+            return (created, self.files[file_path])
 
     def get_multiple(self, files):
         """Return multiple files by a list of file paths."""
-        return_list = [self.get_file(path) for path in files]
+        raise DeprecatedError
+        return_list = [self.get_or_create_file(path)[1] for path in files]
 
         return return_list
 
@@ -186,17 +195,31 @@ class FileSet:
         """Check whether a file is present in the set."""
         return file_ in self.files
 
-    def get_and_update_multiple(self, git_stat):
+    def get_and_update_multiple(self, git_stat, commit_num):
         """Receive git stat as an input, returns the file objects."""
         files = []
         for path in git_stat:
-            file_ = self.get_file(path)
+            created, file_ = self.get_or_create_file(
+                file_path=path, commit_num=commit_num)
             line_change = (git_stat[path]['insertions'] -
                            git_stat[path]['deletions'])
+            if path == u'examples/appengine/example.html':
+                print file_.line_count, line_change
             file_.line_count += line_change
-            files.append(file_)
+            if created:
+                files.append(('created', file_))
+            else:
+                if file_.line_count == 0:
+                    files.append(('deleted', file_))
+                else:
+                    files.append(('changed', file_))
 
         return files
+
+    def remove_files(self, files):
+        for file_ in files:
+            if file_.file_path in self.files:
+                del self.files[file_.file_path]
 
 
 class Distance(object):
@@ -313,7 +336,14 @@ class DistanceSet(object):
                 raise DistanceSetError(
                     "Error during _get_or_create_distance()")
 
-    def _get_occurrences_for_file(self, file_, commit=None):
+    def _get_distances_for_files(self, file_):
+        distances_for_file = filter(
+            lambda x: file_ in x.files.itervalues(), self.distance_set)
+
+        return distances_for_file
+
+    def _get_and_sort_occurrences_for_file(self, file_, commit=None):
+        raise DeprecatedError
         ds_for_file = filter(
             lambda x: file_ in x.files.itervalues(), self.distance_set)
 
@@ -352,13 +382,13 @@ class DistanceSet(object):
 
     def get_closest_files(self, file_, number, commit=None):
         """Given a file returns the closest files."""
-        distance_heap = self._get_occurrences_for_file(file_, commit)
-        if len(distance_heap) < number:
-            number = len(distance_heap)
+        ds = self._get_distances_for_files(file_)
 
-        files = [heapq.heappop(distance_heap)[1] for i in range(number)]
+        closest_files = helper_functions.get_top_elements(
+            [(-x.get_occurrence(commit), x.get_other_file(file_)) for x in ds],
+            number)
 
-        return files
+        return [x[1] for x in closest_files]
 
     def reset(self):
         """Reset the distance set object."""

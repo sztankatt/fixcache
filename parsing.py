@@ -9,10 +9,9 @@ def important_line(line):
     return True
 
 
-def get_deletes(line):
+def _get_diff_deleted_line_counter(line):
         """parses a diff line, to get the deleted lines in that diff.
         If the line parsed isn't a delete line, returns None"""
-        print line
         regex1 = r'@@\s-(?P<start_line>\d+),(?P<line_num>\d+)'
         regex2 = r'@@\s-(?P<start_line>\d+),'
         pattern1 = re.compile(regex1)
@@ -33,11 +32,31 @@ def get_deletes(line):
 
             return (start_line, 0)
 
-        return None
+        return (None, None)
+
+
+def get_deleted_lines_from_diff(diff_lines):
+    counter = 0
+    line_list = []
+    for line in diff_lines:
+        start_line, _ = _get_diff_deleted_line_counter(line)
+        if start_line is not None:
+            counter = start_line - 1
+
+        else:
+            if line.startswith('-'):
+                line_list.append(counter)
+                counter += 1
+            elif line.startswith('+'):
+                pass
+            else:
+                counter += 1
+
+    return line_list
 
 
 def is_fix_commit(message):
-        """returns True if commit object is flagged as fixing"""
+        """Return True if commit object is flagged as fixing."""
         m = message
         regex = r'[Ff][Ii][Xx]([Ee][Ss])*'
         if re.search(regex, m) is not None:

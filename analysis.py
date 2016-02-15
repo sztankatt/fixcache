@@ -9,7 +9,7 @@ import logging
 import datetime
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('fixcache_logger')
 logger.setLevel(logging.INFO)
 fh = logging.FileHandler(constants.LOGFILE, "w")
 fh.setLevel(logging.INFO)

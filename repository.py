@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+"""Repository module, containing the Repository class.
+
+This class is responsible for running the fixcache algorithm
+for a given git repository, which was cloned form GitHub.
+"""
 import parsing
 import cache
 import filemanagement as fm
@@ -8,6 +13,7 @@ import itertools
 import os
 import sys
 import constants
+import helper_functions
 
 # TODO:
 # 1) introduce line count to the file. increase at each commit, if 0,
@@ -18,19 +24,28 @@ import constants
 # 4) make all the pick-top-k functions nlogk using a heap
 
 
+logger = logging.getLogger('fixcache_logger')
+
+
 class RepositoryError(Exception):
+    """Repository Error."""
+
     def __init__(self, value):
+        """Initalization of the class."""
         self.value = value
 
     def __str__(self):
+        """String representation of the class."""
         return repr(self.value)
 
 
 class Repository(object):
+    """Repository class."""
+
     def __init__(self, repo_dir, cache_ratio=0.1,
-                 distance_to_fetch=None, branch='master',
-                 pre_fetch_size=None):
-        # initializing repository variables
+                 distance_to_fetch=0.1, branch='master',
+                 pre_fetch_size=0.1):
+        """Initalization the Repository variables."""
         try:
             self.file_distances = fm.DistanceSet()
             self.file_set = fm.FileSet()
@@ -64,6 +79,7 @@ class Repository(object):
 
     @property
     def cache_ratio(self):
+        """Cache ratio controls the persentage of files to be in the cache."""
         return self._cache_ratio
 
     @cache_ratio.setter
@@ -74,6 +90,7 @@ class Repository(object):
 
     @property
     def distance_to_fetch(self):
+        """Distance to fetch, used when fetching files at bug introduction."""
         return self._distance_to_fetch
 
     @distance_to_fetch.setter
@@ -85,6 +102,7 @@ class Repository(object):
 
     @property
     def pre_fetch_size(self):
+        """Per revision pre fetch size. Fetching new/changed files."""
         return self._pre_fetch_size
 
     @pre_fetch_size.setter
@@ -95,6 +113,7 @@ class Repository(object):
         self._pre_fetch_size = value
 
     def reset(self, cache_ratio=None, distance_to_fetch=None, pfs=None):
+        """Reset the cache after each analysis."""
         self.hit_count = 0
         self.miss_count = 0
         self.file_distances.reset()
@@ -116,22 +135,36 @@ class Repository(object):
         self.cache.reset(self.cache_size)
 
     def run_fixcache(self):
+        """Run fixcache with the given variables."""
         for commit in self.commit_list:
-            # print commit.stats.files
+            logger.debug('Currently at %s' % commit)
             parents = commit.parents
             if len(parents) == 1:
-                # print files
-                files = self._get_diff_file_list(commit, parents[0])
-                created_files = filter(lambda x: x[0] == 'created', files)
-                changed_files = filter(lambda x: x[0] == 'changed', files)
+                # return the list of tuples by file info
+                f_info = self.file_set.get_and_update_multiple(
+                    git_stat=commit.stats.files,
+                    commit_num=self.commit_order[commit.hexsha])
+                changed_files = [
+                    x[1] for x in filter(lambda x: x[0] == 'changed', f_info)
+                ]
 
-                self._update_distance_set(
-                    created_files + changed_files, commit)
+                deleted_files = [
+                    x[1] for x in filter(lambda x: x[0] == 'deleted', f_info)
+                ]
+
+                self._cleanup_files(deleted_files)
+
+                files = [x[1] for x in f_info]
+
+                self._update_distance_set(files, commit)
 
                 if parsing.is_fix_commit(commit.message):
-                    for _, path, lines in changed_files:
-                        file_ = self.file_set.get_file(path)
+                    for file_ in changed_files:
                         file_.fault(self.commit_order[commit.hexsha])
+                        deleted_line_dict = self._get_diff_deleted_lines(
+                            commit, parents[0])
+                        # print deleted_line_dict
+                        del_lines = deleted_line_dict[file_.path]
                         if self.cache.file_in(file_):
                             self.hit_count += 1
                         else:
@@ -139,7 +172,9 @@ class Repository(object):
                             self.cache.add(file_)
 
                             line_intr_c = self._get_line_introducing_commits(
-                                lines, path, commit)
+                                del_lines, file_.path, commit.parents[0])
+
+                            closest_file_set = []
 
                             for c in line_intr_c:
                                 # get closest files is nlogk, so optimal
@@ -147,31 +182,45 @@ class Repository(object):
                                     file_,
                                     self.distance_to_fetch,
                                     self.commit_order[c.hexsha])
+                                closest_file_set += cf
 
-                            self.cache.add_multiple(cf)
+                            # there is no need for pre sorting, as already
+                            # fetchiing closest files
+                            self.cache.add_multiple(
+                                closest_file_set, pre_sort=False)
 
-                new_changed_files = [
-                    x[1] for x in created_files + changed_files]
                 per_revision_pre_fetch = self._get_per_rev_pre_fetch(
-                    new_changed_files, commit)
+                    files, commit)
 
-                self.cache.add_multiple(
-                    self.file_set.get_multiple(per_revision_pre_fetch))
-
-                break
-
+                self.cache.add_multiple(per_revision_pre_fetch)
             elif len(parents) == 0:
                 # initial commit
                 files = self._get_commit_tree_files(commit)
-                self.cache.add_multiple(self.file_set.get_multiple(files))
+                files_to_add = []
+                for path in files:
+                    line_count = self._get_line_count(path, commit)
+                    _, file_ = self.file_set.get_or_create_file(
+                        file_path=path, line_count=line_count)
+                    files_to_add.append(file_)
+                self.cache.add_multiple(files_to_add)
             else:
                 pass
-    def _get_per_rev_pre_fetch(self, file_list, commit):
-        loc_file_list = [
-            (self._get_line_count(x, commit), x) for x in file_list]
-        loc_file_list.sort(reverse=True)
 
-        return [x[1] for x in loc_file_list[:self.pre_fetch_size]]
+    def _cleanup_files(self, files):
+        return
+        self.file_set.remove_files(files)
+        self.file_distances.remove_files(files=files)
+        self.cache.remove_files(files=files)
+
+    def _get_per_rev_pre_fetch(self, file_list, commit):
+        if len(file_list) <= self.pre_fetch_size:
+            return file_list
+
+        loc_file_list = helper_functions.get_top_elements(
+            [(-x.line_count, x) for x in file_list],
+            self.pre_fetch_size)
+
+        return [x[1] for x in loc_file_list]
 
     def _get_dtf(self, dtf):
         if dtf is None:
@@ -207,7 +256,6 @@ class Repository(object):
             commit_counter += 1
 
     def _update_distance_set(self, files, commit):
-        files = [self.file_set.get_file(x[1]) for x in files]
         file_pairs = list(itertools.combinations(files, 2))
 
         for pair in file_pairs:
@@ -217,19 +265,6 @@ class Repository(object):
     def _get_file_count(self, commit):
         return len(self._get_commit_tree_files(commit))
 
-    def _get_deleted_lines(self, diff_message):
-        """returns the line numbers which were deleted by a commit
-        This means, that these line numbers will have to be used
-        with the previous diff.
-        """
-        lines = []
-        for line in diff_message:
-            change = parsing.get_deletes(line)
-            if change is not None:
-                lines.append(change)
-
-        return lines
-
     def _get_line_count(self, file_, commit):
         line_count = 0
         for commit, lines in self.repo.blame(commit, file_):
@@ -238,7 +273,8 @@ class Repository(object):
         return line_count
 
     def _get_line_introducing_commits(self, line_list, file_, commit):
-        """Returns the set of commits which introduced lines in a file.
+        """Return the set of commits which introduced lines in a file.
+
         Ideally this will be a single commit, not more.
 
         :type line_list: int tuple list
@@ -264,15 +300,15 @@ class Repository(object):
         finally:
             pass
 
-        for start_l, end_l in line_list:
-            for commit, line in commit_list[start_l:start_l + end_l + 1]:
-                if parsing.important_line(line):
-                    commit_set.append(commit)
+        for line_number in line_list:
+            commit, line = commit_list[line_number]
+            if parsing.important_line(line):
+                commit_set.append(commit)
 
         return set(commit_set)
 
-    def _get_diff_file_list(self, commit1, commit2):
-        """returns a list of blobs which changed from commit1 to commit2
+    def _get_diff_deleted_lines(self, commit1, commit2):
+        """Return a list of blobs which changed from commit1 to commit2.
 
         :type commit1: Commit object
         :param commit1: The child commit, which is newer
@@ -283,29 +319,23 @@ class Repository(object):
         :rtype: tuple of file, deleted lines and change type
         :return: Returns a list of tuples with specification as above
         """
-
         diffs = commit2.diff(commit1, create_patch=True, unified=True)
 
-        file_list = []
+        file_dict = {}
         for diff in diffs:
-            deleted_lines = self._get_deleted_lines(diff.diff.splitlines())
-            if diff.new_file:
-                file_list.append(('created', diff.b_blob.path, deleted_lines))
-            elif diff.deleted_file:
-                file_list.append(('deleted', diff.a_blob.path, deleted_lines))
-            elif diff.renamed:
-                pass
+            deleted_lines = parsing.get_deleted_lines_from_diff(
+                diff.diff.splitlines())
+            if diff.b_path is not None:
+                file_dict[diff.a_path] = deleted_lines
+            elif diff.a_path is not None:
+                file_dict[diff.a_path] = deleted_lines
             else:
-                if diff.b_blob is not None:
-                    file_list.append((
-                        'changed', diff.b_blob.path, deleted_lines))
-                elif diff.a_blob is not None:
-                    file_list.append((
-                        'changed', diff.a_blob.path, deleted_lines))
-        return file_list
+                pass
+
+        return file_dict
 
     def _get_commit_tree_files(self, commit):
-        """returns a list of blobs for a given commit
+        """Retrn a list of blobs for a given commit.
 
         :type commit: Commit object
         :param commit: The input commit for which we want to know the list of
@@ -323,7 +353,7 @@ class Repository(object):
         return file_list
 
     def _get_number_of_files(self):
-        """returns the number of files and head
+        """Return the number of files and head.
 
         :rtype: int
         :return: the number of files at head
@@ -334,7 +364,10 @@ class Repository(object):
 
 
 class WindowedRepository(Repository):
+    """WindowedRepository class, used for alternativy evaluation."""
+
     def __init__(self, window=0.9, *args, **kwargs):
+        """Initalization of Repository variables, with window variables."""
         super(WindowedRepository, self).__init__(*args, **kwargs)
         self.window = window
         commit_list_len = len(self.commit_list)
@@ -345,10 +378,12 @@ class WindowedRepository(Repository):
         self.horizon_normal_file_set = set()
 
     def window_init(self, window=None):
+        """Initalization of a new window."""
         pass
         # TODO use a single function for reset and init
 
     def reset(self, window=None, *args, **kwargs):
+        """Reset the WindowedRepository."""
         super(WindowedRepository, self).reset(*args, **kwargs)
         if window is not None:
             self.window = window
@@ -364,6 +399,7 @@ class WindowedRepository(Repository):
         self.reset_horizon()
 
     def reset_horizon(self):
+        """Reset horizon of WindowedRepository."""
         del self.horizon_faulty_file_set
         self.horizon_faulty_file_set = set()
 
