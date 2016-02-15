@@ -199,8 +199,10 @@ class Repository(object):
                 files_to_add = []
                 for path in files:
                     line_count = self._get_line_count(path, commit)
-                    _, file_ = self.file_set.get_or_create_file(
+                    created, file_ = self.file_set.get_or_create_file(
                         file_path=path, line_count=line_count)
+                    if not created:
+                        file_.line_count = line_count
                     files_to_add.append(file_)
                 self.cache.add_multiple(files_to_add)
             else:

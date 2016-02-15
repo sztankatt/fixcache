@@ -13,9 +13,11 @@ def main():
     logger = logging.getLogger('fixcache_logger')
     logger.setLevel(logging.DEBUG)
     repo = Repository(
-        repo_dir=constants.BOTO_REPO,
+        repo_dir=constants.FACEBOOK_SDK_REPO,
+        distance_to_fetch=0.1,
+        pre_fetch_size=0.2,
         cache_ratio=0.2,
-        branch='develop')
+        branch='master')
 
     time = timeit.timeit(repo.run_fixcache, number=1)
     print time

@@ -1,9 +1,10 @@
 #! /usr/bin/env python
+"""Main analysis module."""
 from repository import Repository
-from daemonize import Daemonize
 import constants
 import timeit
 import os
+import sys
 import csv
 import logging
 import datetime
@@ -18,6 +19,7 @@ keep_fds = [fh.stream.fileno()]
 
 
 def basic_fixcache_analyser(repo, cache_ratio, distance_to_fetch, pfs):
+    """Basic analyser, used for one line in the csv files."""
     repo.reset(cache_ratio, distance_to_fetch, pfs)
     time = timeit.timeit(repo.run_fixcache, number=1)
 
@@ -31,11 +33,12 @@ def basic_fixcache_analyser(repo, cache_ratio, distance_to_fetch, pfs):
         time)
 
 
-def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
+def analyse_by_cache_ratio(version, repo, dtf, pfs, progressive=True):
+    """Analyse a repository by cache ratio, with given pfs and dtf."""
     logger.info(
         "Starting fixcache analysis for %s with dtf=%s, pfs=%s, at %s" %
         (repo.repo_dir, dtf, pfs, datetime.datetime.now()))
-    dir_ = os.path.join(constants.CSV_ROOT, repo.repo_dir)
+    dir_ = os.path.join(constants.CSV_ROOT, version, repo.repo_dir)
 
     if not os.path.exists(dir_):
         os.makedirs(dir_)
@@ -71,12 +74,12 @@ def analyse_by_cache_ratio(repo, dtf, pfs, progressive=True):
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
 
-def analyse_by_pfs_dtf(repo, cache_ratio, pfs_set, dtf_set):
-    """Analyse by pfs and dtf."""
+def analyse_by_pfs_dtf(version, repo, cache_ratio, pfs_set, dtf_set):
+    """Analyse with fixed cache ratio, varying pfs and dtf."""
     logger.info(
         "Starting fixcache for fixed cache of %s at %s" %
         (cache_ratio, datetime.datetime.now()))
-    dir_ = os.path.join(constants.CSV_ROOT, repo.repo_dir)
+    dir_ = os.path.join(constants.CSV_ROOT, version, repo.repo_dir)
 
     if not os.path.exists(dir_):
         os.makedirs(dir_)
@@ -105,37 +108,28 @@ def analyse_by_pfs_dtf(repo, cache_ratio, pfs_set, dtf_set):
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
 
-def main():
-    # facebook_sdk_repo = Repository(constants.FACEBOOK_SDK_REPO)
-    # boto3_repo = Repository(constants.BOTO3_REPO, branch='develop')
-    # boto_repo = Repository(constants.BOTO_REPO, branch='develop')
-    raspberry_io_repo = Repository('raspberryio')
+def main(*args):
+    """Main entry."""
+    if args[0] == 'facebook-sdk':
+        repo = Repository(constants.FACEBOOK_SDK_REPO)
+    elif args[0] == 'boto3':
+        repo = Repository(constants.BOTO3_REPO, branch='develop')
+    elif args[0] == 'boto':
+        repo = Repository(constants.BOTO_REPO, branch='develop')
+    elif args[0] == 'raspberrio':
+        repo = Repository('raspberryio')
 
     # boto3 tests
-    dtf_set = [(x + 1) * 5 / 100.0 for x in range(20)]
-    pfs_set = [(x + 1) / 100.0 for x in range(20)]
-    # for i in variables:
-    #     for j in variables:
-    #         analyse_by_cache_ratio(facebook_sdk_repo, dtf=i, pfs=j)
+    dtf_set = [0.1, 0.2, 0.3, 0.4, 0.5]
+    pfs_set = [0.1, 0.15, 0.2]
+    for i in dtf_set:
+        for j in pfs_set:
+            analyse_by_cache_ratio(args[1], repo, dtf=i, pfs=j)
 
-    # for i in variables:
-    #     for j in variables:
-    #         analyse_by_cache_ratio(boto3_repo, dtf=i, pfs=j)
-
-    # for i in variables:
-    #     for j in variables:
-    #         analyse_by_cache_ratio(boto_repo, dtf=i, pfs=j)
-    # for i in variables:
-    #    for j in variables:
-    #        analyse_by_cache_ratio(raspberry_io_repo, dtf=i, pfs=j)
-    # analyse_by_pfs_dtf(
-    #    raspberry_io_repo, cache_ratio=0.25, pfs_set=pfs_set, dtf_set=dtf_set)
-    analyse_by_pfs_dtf(
-        raspberry_io_repo, cache_ratio=0.15, pfs_set=pfs_set, dtf_set=dtf_set)
-
-    # analyse_by_cache_ratio(boto_repo, 1)
 if __name__ == '__main__':
-    pid = os.path.join(constants.BASE_DIR, 'fixcache3.pid')
-
-    daemon = Daemonize(app="fixcache", pid=pid, action=main, keep_fds=keep_fds)
-    daemon.start()
+    pid = os.path.join(constants.BASE_DIR, 'fixcache.pid')
+    main(*sys.argv[1:])
+    # daemon = Daemonize(
+    #     app="fixcache",
+    #     pid=pid, action=main(*sys.argv[1:]), keep_fds=keep_fds)
+    # daemon.start()
