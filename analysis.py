@@ -128,10 +128,10 @@ def main():
     # for i in variables:
     #    for j in variables:
     #        analyse_by_cache_ratio(raspberry_io_repo, dtf=i, pfs=j)
+    # analyse_by_pfs_dtf(
+    #    raspberry_io_repo, cache_ratio=0.25, pfs_set=pfs_set, dtf_set=dtf_set)
     analyse_by_pfs_dtf(
-        raspberry_io_repo, cache_ratio=0.25, pfs_set=pfs_set, dtf_set=dtf_set)
-    analyse_by_pfs_dtf(
-        raspberry_io_repo, cache_ratio=0.2, pfs_set=pfs_set, dtf_set=dtf_set)
+        raspberry_io_repo, cache_ratio=0.15, pfs_set=pfs_set, dtf_set=dtf_set)
 
     # analyse_by_cache_ratio(boto_repo, 1)
 if __name__ == '__main__':
