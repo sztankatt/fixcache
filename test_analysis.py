@@ -6,6 +6,7 @@ import constants
 import timeit
 import sys
 import logging
+import daemon
 
 
 def main():
@@ -22,4 +23,5 @@ def main():
     time = timeit.timeit(repo.run_fixcache, number=1)
     print time
 if __name__ == '__main__':
-    sys.exit(main())
+    with daemon.DaemonContext():
+        main()

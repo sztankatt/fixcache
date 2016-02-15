@@ -8,6 +8,7 @@ import sys
 import csv
 import logging
 import datetime
+import daemon
 
 
 logger = logging.getLogger('fixcache_logger')
@@ -127,8 +128,8 @@ def main(*args):
             analyse_by_cache_ratio(args[1], repo, dtf=i, pfs=j)
 
 if __name__ == '__main__':
-    pid = os.path.join(constants.BASE_DIR, 'fixcache.pid')
-    main(*sys.argv[1:])
+    with daemon.DaemonContext():
+        main(*sys.argv[1:])
     # daemon = Daemonize(
     #     app="fixcache",
     #     pid=pid, action=main(*sys.argv[1:]), keep_fds=keep_fds)
