@@ -221,6 +221,10 @@ class FileSet:
             if file_.file_path in self.files:
                 del self.files[file_.file_path]
 
+    def changed_several(self, files, commit):
+        for file_ in files:
+            file_.changed(commit)
+
 
 class Distance(object):
     """An abstract view of the distance object.

@@ -6,7 +6,7 @@ import sys
 
 import constants
 
-from graph_data import graph_data
+from constants import graph_data, version_color
 # from graph_data import plot_1_data
 
 import matplotlib.lines as mlines
@@ -163,12 +163,67 @@ def plot_fixed_cache_rate(version, repo_name, cache_ratio, fig_name=None):
     plt.show()
 
 
+def plot_different_versions(repo_name, pfs, dtf, fig_name=None):
+    """Sample plot of several different repos."""
+    x = range(100)
+    legend = []
+    for version in version_color:
+        csv_reader = file_to_csv(
+            version,
+            repo_name, pfs, dtf)
+        y = get_column(csv_reader, 'hit_rate')
+        if y is not None:
+            plt.plot(x, y, color=version_color[version])
+            line = mlines.Line2D(
+                [], [],
+                label=version, color=version_color[version], linewidth=2)
+            legend.append(line)
+
+    plt.legend(handles=legend, loc=4)
+    plt.ylabel('hit rate')
+    plt.xlabel('cache size (%)')
+    plt.text(2, 0.95, 'pfs=%s, dtf=%s' % (pfs, dtf))
+    plt.grid(True)
+    plt.autoscale(False)
+    plt.show()
+
+
+def plot_speedup(repo_name, pfs, dtf, *versions):
+    x = range(100)
+    if len(versions) != 2:
+        return
+    csv_reader1 = file_to_csv(
+        versions[0], repo_name,
+        pfs, dtf)
+    y1 = get_column(csv_reader1, 'ttr')
+
+    csv_reader2 = file_to_csv(
+        versions[1], repo_name,
+        pfs, dtf)
+
+    y2 = get_column(csv_reader2, 'ttr')
+
+    if y1 is not None and y2 is not None:
+        speedup_y = [float(y1[i]) / float(y2[i]) for i in x]
+
+        plt.plot(x, speedup_y, color='blue')
+
+    plt.ylabel('speedup')
+    plt.text(2, 0.95, 'pfs=%s, dtf=%s' % (pfs, dtf))
+    plt.grid(True)
+    plt.autoscale(False)
+    plt.show()
+
+
 def main(function, *args):
     """Docstring."""
     functions = {
         'plot_one': plot_one,
         'plot_several': plot_several,
-        'plot_fixed_cache_rate': plot_fixed_cache_rate
+        'plot_fixed_cache_rate': plot_fixed_cache_rate,
+        'plot_different_versions': plot_different_versions,
+        'plot_speedup': plot_speedup
+
     }
 
     functions[function](*args)

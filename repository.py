@@ -152,11 +152,19 @@ class Repository(object):
                     x[1] for x in filter(lambda x: x[0] == 'deleted', f_info)
                 ]
 
+                created_files = [
+                    x[1] for x in filter(lambda x: x[0] == 'created', f_info)
+                ]
+
                 self._cleanup_files(deleted_files)
+
+                self.file_set.changed_several(
+                    changed_files, self.commit_order[commit.hexsha])
 
                 files = [x[1] for x in f_info]
 
-                self._update_distance_set(files, commit)
+                self._update_distance_set(
+                    created_files + changed_files, commit)
 
                 if parsing.is_fix_commit(commit.message):
                     for file_ in changed_files:
@@ -189,10 +197,14 @@ class Repository(object):
                             self.cache.add_multiple(
                                 closest_file_set, pre_sort=False)
 
-                per_revision_pre_fetch = self._get_per_rev_pre_fetch(
-                    files, commit)
+                new_entity_pre_fetch = self._get_per_rev_pre_fetch(
+                    created_files, commit)
 
-                self.cache.add_multiple(per_revision_pre_fetch)
+                changed_entity_pre_fetch = self._get_per_rev_pre_fetch(
+                    changed_files, commit)
+
+                self.cache.add_multiple(new_entity_pre_fetch)
+                self.cache.add_multiple(changed_entity_pre_fetch)
             elif len(parents) == 0:
                 # initial commit
                 files = self._get_commit_tree_files(commit)

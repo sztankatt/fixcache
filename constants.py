@@ -43,3 +43,8 @@ graph_data = {
         },
     ]
 }
+
+version_color = {
+    'version_1': 'red',
+    'version_2': 'blue'
+}

@@ -4,9 +4,7 @@
 from repository import Repository
 import constants
 import timeit
-import sys
 import logging
-import daemon
 
 
 def main():
@@ -14,14 +12,13 @@ def main():
     logger = logging.getLogger('fixcache_logger')
     logger.setLevel(logging.DEBUG)
     repo = Repository(
-        repo_dir=constants.FACEBOOK_SDK_REPO,
+        repo_dir=constants.BOTO_REPO,
         distance_to_fetch=0.1,
         pre_fetch_size=0.2,
         cache_ratio=0.2,
-        branch='master')
+        branch='develop')
 
     time = timeit.timeit(repo.run_fixcache, number=1)
     print time
 if __name__ == '__main__':
-    with daemon.DaemonContext():
-        main()
+    main()
