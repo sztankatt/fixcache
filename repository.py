@@ -298,9 +298,11 @@ class Repository(object):
             for commit, lines in self.repo.blame(commit, file_):
                 commit_list += [(commit, x) for x in lines]
         except git.exc.GitCommandError:
-            print file_ + " " + commit.hexsha
+            return set()
         finally:
             pass
+        if len(commit_list) == 0:
+            return set()
 
         for line_number in line_list:
             commit, line = commit_list[line_number]

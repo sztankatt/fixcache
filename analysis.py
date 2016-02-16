@@ -12,7 +12,7 @@ import daemon
 
 
 logger = logging.getLogger('fixcache_logger')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 fh = logging.FileHandler(constants.LOGFILE, "w")
 fh.setLevel(logging.INFO)
 logger.addHandler(fh)
@@ -117,8 +117,8 @@ def main(*args):
         repo = Repository(constants.BOTO3_REPO, branch='develop')
     elif args[0] == 'boto':
         repo = Repository(constants.BOTO_REPO, branch='develop')
-    elif args[0] == 'raspberrio':
-        repo = Repository('raspberryio')
+    elif args[0] == 'raspberryio':
+        repo = Repository(constants.RASPBERRYIO_REPO)
 
     # boto3 tests
     dtf_set = [0.1, 0.2, 0.3, 0.4, 0.5]

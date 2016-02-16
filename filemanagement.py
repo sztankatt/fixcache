@@ -205,8 +205,6 @@ class FileSet:
                 file_path=path, commit_num=commit_num)
             line_change = (git_stat[path]['insertions'] -
                            git_stat[path]['deletions'])
-            if path == u'examples/appengine/example.html':
-                print file_.line_count, line_change
             file_.line_count += line_change
             if created:
                 files.append(('created', file_))
