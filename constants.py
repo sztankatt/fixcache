@@ -10,41 +10,32 @@ AML = 'awesome-machine-learning'
 CSV_ROOT = os.path.join(BASE_DIR, 'fixcache', 'analysis_output')
 LOGFILE = os.path.join(BASE_DIR, 'fixcache', 'logs', 'fixcache2.log')
 
-graph_data = {
-    'title': 'Figure 4',
-    'curves': [
-        {
-            'args': ['pythonforfacebook/facebook-sdk.git (#c=346)'],
-            'options': {
-                'color': 'blue',
-                'repo': 'facebook-sdk',
-            }
-        },
-        {
-            'args': ['boto/boto.git (#c=6935)'],
-            'options': {
-                'color': 'orange',
-                'repo': 'boto',
-            }
-        },
-        {
-            'args': ['boto/boto3.git (#c=685)'],
-            'options': {
-                'color': 'red',
-                'repo': 'boto3',
-            }
-        },
-        {
-            'args': ['python/raspberryio.git (#c=614)'],
-            'options': {
-                'color': 'green',
-                'repo': 'raspberryio',
-            }
-        },
-    ]
+
+REPO_DATA = {
+    'facebook-sdk': {
+        'color': 'blue',
+        'legend': 'facebook-sdk.git (#c=346)',
+        'commit_num': 346
+    },
+    'boto': {
+        'color': 'orange',
+        'legend': 'boto.git (#c=6935)',
+        'commit_num': 6935
+    },
+    'boto3': {
+        'color': 'red',
+        'legend': 'boto3.git (#c=685)',
+        'commit_num': 685
+    },
+    'raspberryio': {
+        'color': 'green',
+        'legend': 'raspberryio.git (#c=614)',
+        'commit_num': 614
+    }
 }
 
 version_color = {
     'version_1': 'red',
-    'version_2': 'blue'
+    'version_2': 'blue',
+    'version_3': 'orange'
 }

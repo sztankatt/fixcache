@@ -75,7 +75,7 @@ def analyse_by_cache_ratio(version, repo, dtf, pfs, progressive=True):
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
 
-def analyse_by_pfs_dtf(version, repo, cache_ratio, pfs_set, dtf_set):
+def analyse_by_fixed_cache_ratio(version, repo, cache_ratio, pfs_set, dtf_set):
     """Analyse with fixed cache ratio, varying pfs and dtf."""
     logger.info(
         "Starting fixcache for fixed cache of %s at %s" %
@@ -111,26 +111,33 @@ def analyse_by_pfs_dtf(version, repo, cache_ratio, pfs_set, dtf_set):
 
 def main(*args):
     """Main entry."""
-    if args[0] == 'facebook-sdk':
+    if args[1] == 'facebook-sdk':
         repo = Repository(constants.FACEBOOK_SDK_REPO)
-    elif args[0] == 'boto3':
+    elif args[1] == 'boto3':
         repo = Repository(constants.BOTO3_REPO, branch='develop')
-    elif args[0] == 'boto':
+    elif args[1] == 'boto':
         repo = Repository(constants.BOTO_REPO, branch='develop')
-    elif args[0] == 'raspberryio':
+    elif args[1] == 'raspberryio':
         repo = Repository(constants.RASPBERRYIO_REPO)
 
-    # boto3 tests
-    dtf_set = [0.1, 0.2, 0.3, 0.4, 0.5]
-    pfs_set = [0.1, 0.15, 0.2]
-    for i in dtf_set:
-        for j in pfs_set:
-            analyse_by_cache_ratio(args[1], repo, dtf=i, pfs=j)
+    if args[0] == 'analyse_by_cache_ratio':
+        # boto3 tests
+        dtf_set = [0.1, 0.2, 0.3, 0.4, 0.5]
+        pfs_set = [0.1, 0.15, 0.2]
+        for i in dtf_set:
+            for j in pfs_set:
+                analyse_by_cache_ratio(args[2], repo, dtf=i, pfs=j)
+    elif args[0] == 'analyse_by_fixed_cache_ratio':
+        dtf_set = [float(x + 2) / 20 for x in range(10)]
+        pfs_set = dtf_set[:6]
+
+        cache_ratio = [float(x + 1) / 20 for x in range(10)]
+
+        for cr in cache_ratio:
+            analyse_by_fixed_cache_ratio(
+                args[2], repo,
+                cache_ratio=cr, dtf_set=dtf_set, pfs_set=pfs_set)
 
 if __name__ == '__main__':
     with daemon.DaemonContext():
         main(*sys.argv[1:])
-    # daemon = Daemonize(
-    #     app="fixcache",
-    #     pid=pid, action=main(*sys.argv[1:]), keep_fds=keep_fds)
-    # daemon.start()

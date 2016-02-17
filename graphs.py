@@ -6,15 +6,16 @@ import sys
 
 import constants
 
-from constants import graph_data, version_color
+from constants import REPO_DATA, version_color
 # from graph_data import plot_1_data
 
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+from pylab import text
 
 
-def file_to_csv_by_name(version, repository_name, file_):
+def _file_to_csv_by_name(version, repository_name, file_):
+    """Get the csv file to a list of rows, as tuples."""
     dir_ = os.path.join(constants.CSV_ROOT, version, repository_name)
     file_ = os.path.join(
         dir_, file_
@@ -28,18 +29,17 @@ def file_to_csv_by_name(version, repository_name, file_):
         pass
 
 
-def file_to_csv(version, repository_name, pfs, dtf):
+def _file_to_csv(version, repository_name, pfs, dtf):
     """Read file into csv type python object."""
     file_ = ('analyse_by_cache_ratio_progressive_dtf_' + str(dtf) +
              '_pfs_' + str(pfs) + '.csv')
 
-    return file_to_csv_by_name(version, repository_name, file_)
+    return _file_to_csv_by_name(version, repository_name, file_)
 
 
 def calc_hit_rate(x, y):
     """Calculate hit rate based on hit and miss value."""
     lookups = int(x) + int(y)
-    print x, y, lookups
     hit_rate = float(x) / float(lookups)
     return hit_rate
 
@@ -53,39 +53,48 @@ def get_column(csv_reader, col_name):
             return [x[col_name] for x in csv_reader]
 
 
-def plot_several(version, pfs, dtf, figure_name=None):
+def plot_several(pfs, dtf, version, figure_name=None):
     """Sample plot of several different repos."""
     x = range(100)
     legend = []
-    for curve in graph_data['curves']:
-        csv_reader = file_to_csv(
+
+    fig, ax = plt.subplots()
+
+    for repo_name in REPO_DATA:
+        csv_reader = _file_to_csv(
             version,
-            curve['options']['repo'], pfs, dtf)
+            repo_name, pfs, dtf)
         y = get_column(csv_reader, 'hit_rate')
         if y is not None:
-            plt.plot(x, y, color=curve['options']['color'])
+            plt.plot(x, y, color=REPO_DATA[repo_name]['color'])
             line = mlines.Line2D(
-                [], [], color=curve['options']['color'],
-                label=curve['args'][0], linewidth=2)
+                [], [], color=REPO_DATA[repo_name]['color'],
+                label=REPO_DATA[repo_name]['legend'], linewidth=2)
             legend.append(line)
 
-    plt.legend(handles=legend, loc=4)
+    plt.legend(handles=legend, loc=4, fontsize=12)
     plt.ylabel('hit rate')
     plt.xlabel('cache size (%)')
     if figure_name is None:
-        plt.title("Fixcache for several repositories")
+        plt.title("FixCache for several repositories: %s" % (version,),
+                  y=1.02)
     else:
         plt.title(figure_name)
-    plt.text(2, 0.95, 'pfs=%s, dtf=%s' % (pfs, dtf))
+
+    legend_text = 'pfs = %s, dtf = %s' % (
+        pfs, dtf)
+    text(0.978, 0.3, legend_text, ha='right', va='top',
+         transform=ax.transAxes, multialignment='left', fontsize=12,
+         bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
     plt.grid(True)
     plt.autoscale(False)
     plt.show()
 
 
-def plot_one(version, repo_name, pfs, dtf, fig_name=None):
+def plot_one(repo_name, pfs, dtf, version, fig_name=None):
     """Plot a single repository data."""
     x = range(100)
-    csv_reader = file_to_csv(version, repo_name, pfs, dtf)
+    csv_reader = _file_to_csv(version, repo_name, pfs, dtf)
 
     if csv_reader is None:
         return
@@ -97,9 +106,14 @@ def plot_one(version, repo_name, pfs, dtf, fig_name=None):
     fig = plt.figure()
 
     fig.suptitle(
-        "Analysing fixcache for %s" % (repo_name + '.git',), fontsize=16)
+        "Analysing fixcache for %s" % (repo_name + '.git',), fontsize=16,
+        y=1.02)
     ax1 = plt.subplot(211)
-    ax1.text(2, 0.8, 'pfs=%s, dtf=%s' % (pfs, dtf))
+    legend_text = 'pfs = %s, dtf = %s' % (
+        pfs, dtf)
+    text(0.55, 0.07, legend_text, ha='center', va='center',
+         transform=ax1.transAxes, multialignment='left',
+         bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
     ax1.set_ylabel('hit rate')
     ax1.set_xlabel('cache size (%)')
     ax1.grid(True)
@@ -125,8 +139,9 @@ def plot_one(version, repo_name, pfs, dtf, fig_name=None):
     plt.show()
 
 
-def plot_fixed_cache_rate(version, repo_name, cache_ratio, fig_name=None):
-    csv_reader = csv_reader = file_to_csv_by_name(
+def plot_fixed_cache_rate(repo_name, cache_ratio, version, fig_name=None):
+    """Fixed cache rate plot, variable pfs and dtf."""
+    csv_reader = csv_reader = _file_to_csv_by_name(
         version,
         repo_name,
         'analyse_by_fixed_cache_%s.csv' % (cache_ratio,))
@@ -151,7 +166,7 @@ def plot_fixed_cache_rate(version, repo_name, cache_ratio, fig_name=None):
     print hit_rate
 
     plt.title(
-        'dtf and pfs for %s.git with cahe_ratio=%s' % (repo_name, cache_ratio))
+        'dtf and pfs analysis for %s.git: %s' % (repo_name, version))
 
     plt.ylabel('dtf (% of cache size)')
     plt.xlabel('pfs (% of cache size)')
@@ -167,8 +182,11 @@ def plot_different_versions(repo_name, pfs, dtf, fig_name=None):
     """Sample plot of several different repos."""
     x = range(100)
     legend = []
+
+    fig, ax = plt.subplots()
+
     for version in version_color:
-        csv_reader = file_to_csv(
+        csv_reader = _file_to_csv(
             version,
             repo_name, pfs, dtf)
         y = get_column(csv_reader, 'hit_rate')
@@ -179,37 +197,55 @@ def plot_different_versions(repo_name, pfs, dtf, fig_name=None):
                 label=version, color=version_color[version], linewidth=2)
             legend.append(line)
 
+    plt.title('Different version outputs of %s.git' % (repo_name,),
+              y=1.02)
+
     plt.legend(handles=legend, loc=4)
     plt.ylabel('hit rate')
     plt.xlabel('cache size (%)')
-    plt.text(2, 0.95, 'pfs=%s, dtf=%s' % (pfs, dtf))
+    legend_text = 'pfs = %s, dtf = %s\ncommit_num = %s' % (
+        pfs, dtf, REPO_DATA[repo_name]['commit_num'])
+    text(0.55, 0.07, legend_text, ha='center', va='center',
+         transform=ax.transAxes, multialignment='left',
+         bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
     plt.grid(True)
     plt.autoscale(False)
     plt.show()
 
 
 def plot_speedup(repo_name, pfs, dtf, *versions):
+    """Speedup plot."""
     x = range(100)
     if len(versions) != 2:
         return
-    csv_reader1 = file_to_csv(
+    csv_reader1 = _file_to_csv(
         versions[0], repo_name,
         pfs, dtf)
     y1 = get_column(csv_reader1, 'ttr')
 
-    csv_reader2 = file_to_csv(
+    csv_reader2 = _file_to_csv(
         versions[1], repo_name,
         pfs, dtf)
 
     y2 = get_column(csv_reader2, 'ttr')
+
+    fig, ax = plt.subplots()
 
     if y1 is not None and y2 is not None:
         speedup_y = [float(y1[i]) / float(y2[i]) for i in x]
 
         plt.plot(x, speedup_y, color='blue')
 
+    plt.title('Speedup of %s.git from %s to %s' % (
+        repo_name, versions[0], versions[1]),
+        y=1.02)
     plt.ylabel('speedup')
-    plt.text(2, 0.95, 'pfs=%s, dtf=%s' % (pfs, dtf))
+    plt.xlabel('cache size (%)')
+    legend_text = 'pfs = %s, dtf = %s\ncommit_num = %s' % (
+        pfs, dtf, REPO_DATA[repo_name]['commit_num'])
+    text(0.98, 0.03, legend_text, ha='right', va='bottom',
+         transform=ax.transAxes, multialignment='left',
+         bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
     plt.grid(True)
     plt.autoscale(False)
     plt.show()
