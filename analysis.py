@@ -142,7 +142,7 @@ def main(*args):
                 cache_ratio=cr, dtf_set=dtf_set, pfs_set=pfs_set)
 
 if __name__ == '__main__':
-    if sys.argv[1] != CURRENT_VERSION:
+    if sys.argv[3] != CURRENT_VERSION:
         raise DeprecatedError('Only %s can be used as version' % (
             CURRENT_VERSION,))
     with daemon.DaemonContext():
