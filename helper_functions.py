@@ -2,6 +2,18 @@
 import heapq
 
 
+class DeprecatedError(Exception):
+    """Raise if function not used anymore."""
+
+    def __init__(self, value):
+        """Overwrite default init."""
+        self.value = value
+
+    def __str__(self):
+        """Overwrite default string repr."""
+        return repr(self.value)
+
+
 def get_top_elements(item_list, k):
     """Top k elements of a list of tuples.
 

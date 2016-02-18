@@ -10,6 +10,9 @@ import logging
 import datetime
 import daemon
 
+from constants import CURRENT_VERSION
+from helper_functions import DeprecatedError
+
 
 logger = logging.getLogger('fixcache_logger')
 logger.setLevel(logging.DEBUG)
@@ -139,5 +142,8 @@ def main(*args):
                 cache_ratio=cr, dtf_set=dtf_set, pfs_set=pfs_set)
 
 if __name__ == '__main__':
+    if sys.argv[1] != CURRENT_VERSION:
+        raise DeprecatedError('Only %s can be used as version' % (
+            CURRENT_VERSION,))
     with daemon.DaemonContext():
         main(*sys.argv[1:])

@@ -9,6 +9,7 @@ RASPBERRYIO_REPO = 'raspberryio'
 AML = 'awesome-machine-learning'
 CSV_ROOT = os.path.join(BASE_DIR, 'fixcache', 'analysis_output')
 LOGFILE = os.path.join(BASE_DIR, 'fixcache', 'logs', 'fixcache2.log')
+CURRENT_VERSION = 'version_3'
 
 
 REPO_DATA = {

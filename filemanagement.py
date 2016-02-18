@@ -6,6 +6,7 @@ It handles the backend for Fixcache file management.
 import heapq
 import logging
 import helper_functions
+from helper_functions import DeprecatedError
 
 
 class IFilemanagementError(Exception):
@@ -40,12 +41,6 @@ class FileSetError(IFilemanagementError):
 
 class DistanceSetError(IFilemanagementError):
     """Error used by the DistanceSet class."""
-
-    pass
-
-
-class DeprecatedError(IFilemanagementError):
-    """Raise if function not used anymore."""
 
     pass
 

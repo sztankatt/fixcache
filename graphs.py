@@ -139,7 +139,7 @@ def plot_one(repo_name, pfs, dtf, version, fig_name=None):
     plt.show()
 
 
-def plot_fixed_cache_rate(repo_name, cache_ratio, version, fig_name=None):
+def plot_fixed_cache_ratio(repo_name, cache_ratio, version, fig_name=None):
     """Fixed cache rate plot, variable pfs and dtf."""
     csv_reader = csv_reader = _file_to_csv_by_name(
         version,
@@ -150,20 +150,19 @@ def plot_fixed_cache_rate(repo_name, cache_ratio, version, fig_name=None):
         return
 
     hit_rate = get_column(csv_reader, 'hit_rate')
-    cache_size = get_column(csv_reader, 'cache_size')[0]
-    pfs_size = [
-        float(x) * 100 / int(cache_size) for x in get_column(csv_reader, 'pfs')
-    ]
-    dtf_size = [
-        float(x) * 100 / int(cache_size) for x in get_column(csv_reader, 'dtf')
-    ]
-    # pfs_size = get_column(csv_reader, 'pfs')
-    # dtf_size = get_column(csv_reader, 'dtf')
+    # cache_size = get_column(csv_reader, 'cache_size')[0]
+
+    base = [float(x + 2) / 20 for x in range(10)]
+
+    dtf_size = 6 * base
+    pfs_size = []
+    for i in base[:6]:
+        pfs_size = pfs_size + 10 * [i]
+    print len(pfs_size), len(dtf_size)
+
     sc = plt.scatter(pfs_size, dtf_size, s=80,
                      color=[str(x) for x in hit_rate],
                      cmap=plt.cm.viridis)
-
-    print hit_rate
 
     plt.title(
         'dtf and pfs analysis for %s.git: %s' % (repo_name, version))
@@ -256,7 +255,7 @@ def main(function, *args):
     functions = {
         'plot_one': plot_one,
         'plot_several': plot_several,
-        'plot_fixed_cache_rate': plot_fixed_cache_rate,
+        'plot_fixed_cache_ratio': plot_fixed_cache_ratio,
         'plot_different_versions': plot_different_versions,
         'plot_speedup': plot_speedup
 
