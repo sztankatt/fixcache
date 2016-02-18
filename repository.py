@@ -112,7 +112,8 @@ class Repository(object):
                 'pre-fetch size has to be a non-negative integer')
         self._pre_fetch_size = value
 
-    def reset(self, cache_ratio=None, distance_to_fetch=None, pfs=None):
+    def reset(self, cache_ratio=None, distance_to_fetch=None,
+              pre_fetch_size=None):
         """Reset the cache after each analysis."""
         self.hit_count = 0
         self.miss_count = 0
@@ -129,14 +130,15 @@ class Repository(object):
         if distance_to_fetch is not None:
             self.distance_to_fetch = self._get_dtf(distance_to_fetch)
 
-        if pfs is not None:
-            self.pre_fetch_size = self._get_pfs(pfs)
+        if pre_fetch_size is not None:
+            self.pre_fetch_size = self._get_pfs(pre_fetch_size)
 
         self.cache.reset(self.cache_size)
 
     def run_fixcache(self):
         """Run fixcache with the given variables."""
         for commit in self.commit_list:
+            print self.cache._get_free_space()
             logger.debug('Currently at %s' % commit)
             parents = commit.parents
             if len(parents) == 1:
@@ -192,6 +194,8 @@ class Repository(object):
                                     self.commit_order[c.hexsha])
                                 closest_file_set += cf
 
+                            closest_file_set = list(set(closest_file_set))
+
                             # there is no need for pre sorting, as already
                             # fetchiing closest files
                             self.cache.add_multiple(
@@ -221,7 +225,6 @@ class Repository(object):
                 pass
 
     def _cleanup_files(self, files):
-        return
         self.file_set.remove_files(files)
         self.file_distances.remove_files(files=files)
         self.cache.remove_files(files=files)
@@ -380,9 +383,15 @@ class Repository(object):
 
 
 class WindowedRepository(Repository):
-    """WindowedRepository class, used for alternativy evaluation."""
+    """WindowedRepository class, used for alternativy evaluation.
 
-    def __init__(self, window=0.9, *args, **kwargs):
+    True positive: in cache, and in horizon
+    False positive: in the cache, but not in the horizon
+    True negative: not in the cache, and not in the horizon
+    False negative: not in the cache, but in the horizon.
+    """
+
+    def __init__(self, window=0.9, horizon_step=10, *args, **kwargs):
         """Initalization of Repository variables, with window variables."""
         super(WindowedRepository, self).__init__(*args, **kwargs)
         self.window = window
@@ -392,25 +401,34 @@ class WindowedRepository(Repository):
         self.commit_list = self.commit_list[:new_len]
         self.horizon_faulty_file_set = set()
         self.horizon_normal_file_set = set()
-
-    def window_init(self, window=None):
-        """Initalization of a new window."""
-        pass
-        # TODO use a single function for reset and init
+        self.evaluation_data = {
+            'true_positive': 0,
+            'true_negative': 0,
+            'false_positive': 0,
+            'false_negative': 0
+        }
 
     def reset(self, window=None, *args, **kwargs):
         """Reset the WindowedRepository."""
         super(WindowedRepository, self).reset(*args, **kwargs)
         if window is not None:
             self.window = window
-            commit_list_len = len(self.commit_list)
-            new_len = int(self.window * float(commit_list_len))
             c_list = self.commit_list + self.horizon_commit_list
+
+            commit_list_len = len(c_list)
+            new_len = int(self.window * float(commit_list_len))
+
             del self.horizon_commit_list
             del self.commit_list
 
             self.commit_list = c_list[:new_len]
             self.horizon_commit_list = c_list[new_len:]
+        self.evaluation_data = {
+            'true_positive': 0,
+            'true_negative': 0,
+            'false_positive': 0,
+            'false_negative': 0
+        }
 
         self.reset_horizon()
 
@@ -422,15 +440,53 @@ class WindowedRepository(Repository):
         del self.horizon_normal_file_set
         self.horizon_normal_file_set = set()
 
+    def evaluate(self):
+        """Run fixcache, then calculate TP/TN/FP/FN."""
+        self.run_fixcache()
+        print self.hit_count
+        print self.miss_count
+
+        for commit in self.horizon_commit_list[:20]:
+            f_info = self.file_set.get_and_update_multiple(
+                git_stat=commit.stats.files,
+                commit_num=self.commit_order[commit.hexsha])
+
+            changed_files = [
+                x[1] for x in filter(lambda x: x[0] == 'changed', f_info)
+            ]
+
+            if parsing.is_fix_commit(commit.message):
+                # add files to horizon_faulty."""
+                map(lambda x: self.horizon_faulty_file_set.add(x),
+                    changed_files)
+            else:
+                # add files to horizon normal
+                map(lambda x: self.horizon_normal_file_set.add(x),
+                    changed_files)
+
+        self.horizon_normal_file_set -= self.horizon_faulty_file_set
+        """
+        True positive: in cache, and in horizon
+        False positive: in the cache, but not in the horizon
+        True negative: not in the cache, and not in the horizon
+        False negative: not in the cache, but in the horizon.
+        """
+        cache_set = self.cache.file_set
+        print 'TN: ' + str(len(cache_set & self.horizon_faulty_file_set))
+        print 'FP: ' + str(len(cache_set & self.horizon_normal_file_set))
+        print 'TN: ' + str(len(self.horizon_normal_file_set - cache_set))
+        print 'FN: ' + str(len(self.horizon_faulty_file_set - cache_set))
+        print self.horizon_normal_file_set
+        print self.horizon_faulty_file_set
+
 
 def main():
     """Main entry point for the script."""
     r = WindowedRepository(
-        window=0.9, repo_dir=constants.FACEBOOK_SDK_REPO, cache_ratio=0.1)
+        window=0.9, repo_dir=constants.BOTO3_REPO, cache_ratio=0.3,
+        pre_fetch_size=0.1, distance_to_fetch=0.5, branch='develop')
     print len(r.commit_list)
-    r.run_fixcache()
-    print r.hit_count
-    print r.miss_count
+    r.evaluate()
 
 if __name__ == '__main__':
     sys.exit(main())

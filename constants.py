@@ -1,3 +1,4 @@
+"""Constants."""
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,7 +10,7 @@ RASPBERRYIO_REPO = 'raspberryio'
 AML = 'awesome-machine-learning'
 CSV_ROOT = os.path.join(BASE_DIR, 'fixcache', 'analysis_output')
 LOGFILE = os.path.join(BASE_DIR, 'fixcache', 'logs', 'fixcache2.log')
-CURRENT_VERSION = 'version_3'
+CURRENT_VERSION = 'version_4'
 
 
 REPO_DATA = {
@@ -38,5 +39,6 @@ REPO_DATA = {
 version_color = {
     'version_1': 'red',
     'version_2': 'blue',
-    'version_3': 'orange'
+    'version_3': 'orange',
+    'version_4': 'green'
 }

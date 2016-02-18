@@ -90,12 +90,19 @@ class Cache(object):
 
         if len_ == 1:
             self.add(files[0])
+        elif len_ <= self._get_free_space():
+            self.file_set = self.file_set | set(files)
         elif len_ <= self.size:
             to_remove = len_ - self._get_free_space()
             self._remove_multiple(to_remove)
-            self.file_set |= set(files)
+            self.file_set = self.file_set | set(files)
         else:
             self.file_set = set(files[:self.size])
+
+    def remove_files(self, files):
+        """Remove several files from the cache. Called for deleted files."""
+        for file_ in files:
+            self.file_set.discard(file_)
 
     def flush(self):
         del self.file_set
