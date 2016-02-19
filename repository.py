@@ -446,47 +446,57 @@ class WindowedRepository(Repository):
         print self.hit_count
         print self.miss_count
 
-        for commit in self.horizon_commit_list[:20]:
-            f_info = self.file_set.get_and_update_multiple(
-                git_stat=commit.stats.files,
-                commit_num=self.commit_order[commit.hexsha])
+        cache_set = self.cache.file_set
 
-            changed_files = [
-                x[1] for x in filter(lambda x: x[0] == 'changed', f_info)
-            ]
+        output = []
+
+        counter = 1
+
+        for commit in self.horizon_commit_list:
+            files = self.file_set.get_existing_multiple(commit.stats.files)
 
             if parsing.is_fix_commit(commit.message):
                 # add files to horizon_faulty."""
                 map(lambda x: self.horizon_faulty_file_set.add(x),
-                    changed_files)
+                    files)
             else:
                 # add files to horizon normal
                 map(lambda x: self.horizon_normal_file_set.add(x),
-                    changed_files)
+                    files)
 
-        self.horizon_normal_file_set -= self.horizon_faulty_file_set
+            normal_set = self.horizon_normal_file_set \
+                - self.horizon_faulty_file_set
+
+            faulty_set = self.horizon_faulty_file_set
+
+            true_positive = len(cache_set & faulty_set)
+            false_positive = len(cache_set & normal_set)
+            true_negative = len(normal_set - cache_set)
+            false_negative = len(faulty_set - cache_set)
+
+            out = (counter, true_positive, false_positive,
+                   true_negative, false_negative)
+
+            counter += 1
+            output.append(out)
+
         """
         True positive: in cache, and in horizon
         False positive: in the cache, but not in the horizon
         True negative: not in the cache, and not in the horizon
         False negative: not in the cache, but in the horizon.
         """
-        cache_set = self.cache.file_set
-        print 'TN: ' + str(len(cache_set & self.horizon_faulty_file_set))
-        print 'FP: ' + str(len(cache_set & self.horizon_normal_file_set))
-        print 'TN: ' + str(len(self.horizon_normal_file_set - cache_set))
-        print 'FN: ' + str(len(self.horizon_faulty_file_set - cache_set))
-        print self.horizon_normal_file_set
-        print self.horizon_faulty_file_set
+
+        return output
 
 
 def main():
     """Main entry point for the script."""
     r = WindowedRepository(
-        window=0.9, repo_dir=constants.BOTO3_REPO, cache_ratio=0.3,
+        window=0.9, repo_dir=constants.BOTO_REPO, cache_ratio=0.3,
         pre_fetch_size=0.1, distance_to_fetch=0.5, branch='develop')
-    print len(r.commit_list)
     r.evaluate()
+    print r.cache_size
 
 if __name__ == '__main__':
     sys.exit(main())

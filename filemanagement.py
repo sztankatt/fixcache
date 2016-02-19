@@ -211,6 +211,19 @@ class FileSet:
 
         return files
 
+    def get_existing_multiple(self, git_stat):
+        """Return files from git_stat, only returns files which exist.
+
+        Used by windowed repository only.
+        """
+        files = []
+        for path in git_stat:
+            if path in self.files:
+                file_ = self.files[path]
+                files.append(file_)
+
+        return files
+
     def remove_files(self, files):
         """Remove several files from FileSet object."""
         for file_ in files:

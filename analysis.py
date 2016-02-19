@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 """Main analysis module."""
-from repository import Repository
+from repository import Repository, WindowedRepository
 import constants
 import timeit
 import os
@@ -110,6 +110,59 @@ def analyse_by_fixed_cache_ratio(version, repo, cache_ratio, pfs_set, dtf_set):
                     repo, cache_ratio, dtf, pfs))
 
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
+
+
+def evaluate_repository(repo_name, cache_ratio, pfs, dtf,
+                        version, **kwargs):
+    """Evaluate a repository and save the evaluation results."""
+    print cache_ratio
+    repo = WindowedRepository(
+        repo_dir=constants.REPO_DICT[repo_name],
+        cache_ratio=cache_ratio,
+        pre_fetch_size=pfs,
+        distance_to_fetch=dtf,
+        **kwargs)
+
+    dir_ = os.path.join(constants.CSV_ROOT, version, repo.repo_dir)
+
+    if not os.path.exists(dir_):
+        os.makedirs(dir_)
+
+    file_ = os.path.join(dir_, 'evaluate_%s_cr_%s_pfs_%s_dtf_%s.csv' % (
+        repo_name, cache_ratio, pfs, dtf))
+
+    file_metadata = os.path.join(
+        dir_,
+        'evaluate_%s_cr_%s_pfs_%s_dtf_%s_metadata.csv' % (
+            repo_name, cache_ratio, pfs, dtf))
+
+    if os.path.exists(file_) and os.path.exists(file_metadata):
+        logger.info('Evaluation exists.\nExit\n')
+        return True
+
+    cache_size = repo.cache_size
+    commit_num = len(repo.commit_list) + len(repo.horizon_commit_list)
+    file_count = repo.file_count
+
+    values = repo.evaluate()
+
+    with open(file_metadata, 'wb') as out:
+        csv_out = csv.writer(out)
+        csv_out.writerow(['cache_size', 'commit_num', 'file_count'])
+        csv_out.writerow([cache_size, commit_num, file_count])
+
+    with open(file_, 'wb') as out:
+        csv_out = csv.writer(out)
+        csv_out.writerow(['counter', 'true_positive', 'false_positive',
+                          'true_negative', 'false_negative'])
+
+        for line in values:
+            csv_out.writerow(line)
+
+    return True
+
+    logger.info("Evaluation finished at %s\n" % (
+        datetime.datetime.now(),))
 
 
 def main(*args):

@@ -15,7 +15,7 @@ def main():
         repo_dir=constants.BOTO_REPO,
         distance_to_fetch=0.1,
         pre_fetch_size=0.2,
-        cache_ratio=0.2,
+        cache_ratio=0.3,
         branch='develop')
 
     time = timeit.timeit(repo.run_fixcache, number=1)

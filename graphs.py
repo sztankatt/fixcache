@@ -7,6 +7,7 @@ import sys
 import constants
 
 from constants import REPO_DATA, version_color
+from analysis import evaluate_repository
 # from graph_data import plot_1_data
 
 import matplotlib.lines as mlines
@@ -250,6 +251,54 @@ def plot_speedup(repo_name, pfs, dtf, *versions):
     plt.show()
 
 
+def evaluation(repo_name, cache_ratio, pfs,
+               dtf, version, branch='master', **kwargs):
+    """Evaluate a repository, produce an evaluation graph."""
+    if evaluate_repository(repo_name, float(cache_ratio), float(pfs),
+                           float(dtf), version, branch=branch, **kwargs):
+        metadata = _file_to_csv_by_name(
+            version, repo_name,
+            'evaluate_%s_cr_%s_pfs_%s_dtf_%s_metadata.csv' % (
+                repo_name, cache_ratio, pfs, dtf))[0]
+
+        csv_reader = _file_to_csv_by_name(
+            version, repo_name,
+            'evaluate_%s_cr_%s_pfs_%s_dtf_%s.csv' % (
+                repo_name, cache_ratio, pfs, dtf))
+
+        x = get_column(csv_reader, 'counter')
+        true_positive = get_column(csv_reader, 'true_positive')
+        false_positive = get_column(csv_reader, 'false_positive')
+        true_negative = get_column(csv_reader, 'true_negative')
+        false_negative = get_column(csv_reader, 'false_negative')
+
+        true_positive = [int(i) for i in true_positive]
+        false_positive = [int(i) for i in false_positive]
+        true_negative = [int(i) for i in true_negative]
+        false_negative = [int(i) for i in false_negative]
+        fig, ax = plt.subplots()
+
+        if x is not None:
+            if true_positive is not None:
+                plt.plot(x, true_positive, color='blue')
+
+            if false_positive is not None:
+                plt.plot(x, false_positive, color='red')
+
+            if true_negative is not None:
+                plt.plot(x, true_negative, color='orange')
+
+            if false_negative is not None:
+                plt.plot(x, false_negative, color='green')
+
+            ymax = max([max(true_positive), max(false_negative),
+                        max(true_negative), max(false_positive)])
+            print ymax
+            ax.set_ylim(-0.5, float(ymax) * 1.1)
+        plt.grid(True)
+        plt.show()
+
+
 def main(function, *args):
     """Docstring."""
     functions = {
@@ -257,7 +306,8 @@ def main(function, *args):
         'plot_several': plot_several,
         'plot_fixed_cache_ratio': plot_fixed_cache_ratio,
         'plot_different_versions': plot_different_versions,
-        'plot_speedup': plot_speedup
+        'plot_speedup': plot_speedup,
+        'evaluation': evaluation
 
     }
 

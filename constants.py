@@ -12,6 +12,12 @@ CSV_ROOT = os.path.join(BASE_DIR, 'fixcache', 'analysis_output')
 LOGFILE = os.path.join(BASE_DIR, 'fixcache', 'logs', 'fixcache2.log')
 CURRENT_VERSION = 'version_4'
 
+REPO_DICT = {
+    'facebook-sdk': FACEBOOK_SDK_REPO,
+    'boto3': BOTO3_REPO,
+    'boto': BOTO_REPO,
+    'raspberryio': RASPBERRYIO_REPO
+}
 
 REPO_DATA = {
     'facebook-sdk': {
