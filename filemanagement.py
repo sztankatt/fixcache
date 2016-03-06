@@ -7,6 +7,7 @@ import heapq
 import logging
 import helper_functions
 from helper_functions import DeprecatedError
+import random
 
 
 class IFilemanagementError(Exception):
@@ -234,6 +235,13 @@ class FileSet:
         """Change several files in FileSet object."""
         for file_ in files:
             file_.changed(commit)
+
+    def get_random(self, size):
+        """Get random subset of files."""
+        if size > len(self.files):
+            size = len(self.files)
+
+        return random.sample(self.files, size)
 
 
 class Distance(object):

@@ -39,7 +39,131 @@ class RepositoryError(Exception):
         return repr(self.value)
 
 
-class Repository(object):
+class RepositoryMixin(object):
+    """Repository mixin."""
+
+    def __init__(self, repo_dir, cache_ratio=0.1, branch='master'):
+        """Init."""
+        self.file_set = fm.FileSet()
+        self.cache_ratio = cache_ratio
+        self.hit_count = 0
+        self.miss_count = 0
+        self.repo_dir = repo_dir
+
+        repo_full_path = os.path.join(constants.REPO_DIR, repo_dir)
+        self.repo = git.Repo(repo_full_path)
+        assert not self.repo.bare
+        self.commit_list = list(reversed(
+            list(self.repo.iter_commits(branch))))
+
+        self.file_count = self._get_file_count(self.commit_list[-1])
+        self.cache_size = int(self.cache_ratio * float(self.file_count))
+
+        # initializing commit hash to order mapping
+        self.commit_order = {}
+        self._init_commit_order()
+        self.distance_to_fetch = None
+        self.pre_fetch_size = None
+
+    def _init_commit_order(self):
+        commit_counter = 0
+        for commit in self.commit_list:
+            self.commit_order[commit.hexsha] = commit_counter
+            commit_counter += 1
+
+    def _get_file_count(self, commit):
+        return len(self._get_commit_tree_files(commit))
+
+    def _get_commit_tree_files(self, commit):
+        """Retrn a list of blobs for a given commit.
+
+        :type commit: Commit object
+        :param commit: The input commit for which we want to know the list of
+                        file_list
+
+        :rtype: string list
+        :return: List of strings representing the filename
+        """
+        file_list = []
+        for item in commit.tree.traverse():
+            if item.type == 'blob':
+                # probably not the best way, as O(n^2) for the function
+                file_list.append(item.path)
+
+        return file_list
+
+    def _get_line_count(self, file_, commit):
+        line_count = 0
+        for commit, lines in self.repo.blame(commit, file_):
+            line_count += len(lines)
+
+        return line_count
+
+
+class RandomRepository(RepositoryMixin):
+    """Repository implementing random behavior."""
+
+    def __init__(self, *args, **kwargs):
+        """Init."""
+        super(RandomRepository, self).__init__(*args, **kwargs)
+
+    def run_fixcache(self):
+        """Run fixcache for RandomRepository."""
+        for commit in self.commit_list:
+            logger.debug('Currently at %s' % commit)
+            parents = commit.parents
+            if len(parents) == 1:
+                # return the list of tuples by file info
+                f_info = self.file_set.get_and_update_multiple(
+                    git_stat=commit.stats.files,
+                    commit_num=self.commit_order[commit.hexsha])
+                files = [
+                    x[1] for x in filter(
+                        lambda x: x[0] == 'changed' or x[0] == 'created',
+                        f_info)
+                ]
+
+                deleted_files = [
+                    x[1] for x in filter(lambda x: x[0] == 'deleted', f_info)
+                ]
+
+                self.file_set.remove_files(deleted_files)
+
+                if parsing.is_fix_commit(commit.message):
+                    random_file_set = self.file_set.get_random(self.cache_size)
+                    for file_ in files:
+                        if file_.path in random_file_set:
+                            self.hit_count += 1
+                        else:
+                            self.miss_count += 1
+
+            elif len(parents) == 0:
+                # initial commit
+                files = self._get_commit_tree_files(commit)
+                files_to_add = []
+                for path in files:
+                    line_count = self._get_line_count(path, commit)
+                    created, file_ = self.file_set.get_or_create_file(
+                        file_path=path, line_count=line_count)
+                    files_to_add.append(file_)
+            else:
+                pass
+
+    def reset(self, cache_ratio=None, **kwargs):
+        """Reset the cache after each analysis."""
+        self.hit_count = 0
+        self.miss_count = 0
+        self.file_set.reset()
+
+        if cache_ratio is not None:
+            self.cache_ratio = cache_ratio
+            self.file_count = self._get_file_count(self.commit_list[-1])
+            self.cache_size = int(self.cache_ratio * float(self.file_count))
+            if self.cache_size == 0:
+                self.cache_size = 1
+
+
+class Repository(RepositoryMixin):
     """Repository class."""
 
     def __init__(self, repo_dir, cache_ratio=0.1,
@@ -47,22 +171,9 @@ class Repository(object):
                  pre_fetch_size=0.1):
         """Initalization the Repository variables."""
         try:
+            super(Repository, self).__init__(
+                repo_dir, cache_ratio=0.1, branch=branch)
             self.file_distances = fm.DistanceSet()
-            self.file_set = fm.FileSet()
-            self.commit_order = {}
-            self.cache_ratio = cache_ratio
-            self.hit_count = 0
-            self.miss_count = 0
-            self.repo_dir = repo_dir
-
-            repo_full_path = os.path.join(constants.REPO_DIR, repo_dir)
-            self.repo = git.Repo(repo_full_path)
-            assert not self.repo.bare
-            self.commit_list = list(reversed(
-                list(self.repo.iter_commits(branch))))
-
-            self.file_count = self._get_file_count(self.commit_list[-1])
-            self.cache_size = int(self.cache_ratio * float(self.file_count))
 
             # initializing commit hash to order mapping
             self.cache = cache.SimpleCache(self.cache_size)
@@ -266,28 +377,12 @@ class Repository(object):
             else:
                 return pfs
 
-    def _init_commit_order(self):
-        commit_counter = 0
-        for commit in self.commit_list:
-            self.commit_order[commit.hexsha] = commit_counter
-            commit_counter += 1
-
     def _update_distance_set(self, files, commit):
         file_pairs = list(itertools.combinations(files, 2))
 
         for pair in file_pairs:
             self.file_distances.add_occurrence(
                 *pair, commit=self.commit_order[commit.hexsha])
-
-    def _get_file_count(self, commit):
-        return len(self._get_commit_tree_files(commit))
-
-    def _get_line_count(self, file_, commit):
-        line_count = 0
-        for commit, lines in self.repo.blame(commit, file_):
-            line_count += len(lines)
-
-        return line_count
 
     def _get_line_introducing_commits(self, line_list, file_, commit):
         """Return the set of commits which introduced lines in a file.
@@ -352,24 +447,6 @@ class Repository(object):
                 pass
 
         return file_dict
-
-    def _get_commit_tree_files(self, commit):
-        """Retrn a list of blobs for a given commit.
-
-        :type commit: Commit object
-        :param commit: The input commit for which we want to know the list of
-                        file_list
-
-        :rtype: string list
-        :return: List of strings representing the filename
-        """
-        file_list = []
-        for item in commit.tree.traverse():
-            if item.type == 'blob':
-                # probably not the best way, as O(n^2) for the function
-                file_list.append(item.path)
-
-        return file_list
 
     def _get_number_of_files(self):
         """Return the number of files and head.
@@ -453,32 +530,37 @@ class WindowedRepository(Repository):
         counter = 1
 
         for commit in self.horizon_commit_list:
-            files = self.file_set.get_existing_multiple(commit.stats.files)
+            if len(commit.parents) == 1:
+                files = self.file_set.get_existing_multiple(commit.stats.files)
 
-            if parsing.is_fix_commit(commit.message):
-                # add files to horizon_faulty."""
-                map(lambda x: self.horizon_faulty_file_set.add(x),
-                    files)
-            else:
-                # add files to horizon normal
-                map(lambda x: self.horizon_normal_file_set.add(x),
-                    files)
+                if parsing.is_fix_commit(commit.message):
+                    # add files to horizon_faulty."""
+                    map(lambda x: self.horizon_faulty_file_set.add(x),
+                        files)
 
-            normal_set = self.horizon_normal_file_set \
-                - self.horizon_faulty_file_set
+                    normal_set = self.horizon_normal_file_set \
+                        - self.horizon_faulty_file_set
 
-            faulty_set = self.horizon_faulty_file_set
+                    faulty_set = self.horizon_faulty_file_set
 
-            true_positive = len(cache_set & faulty_set)
-            false_positive = len(cache_set & normal_set)
-            true_negative = len(normal_set - cache_set)
-            false_negative = len(faulty_set - cache_set)
+                    true_positive = len(cache_set & faulty_set)
+                    false_positive = len(cache_set & normal_set)
+                    true_negative = len(normal_set - cache_set)
+                    false_negative = len(faulty_set - cache_set)
+                    file_count = len(normal_set | faulty_set)
 
-            out = (counter, true_positive, false_positive,
-                   true_negative, false_negative)
+                    out = (counter, true_positive, false_positive,
+                           true_negative, false_negative,
+                           file_count, commit.hexsha)
 
-            counter += 1
-            output.append(out)
+                    output.append(out)
+
+                else:
+                    # add files to horizon normal
+                    map(lambda x: self.horizon_normal_file_set.add(x),
+                        files)
+
+                counter += 1
 
         """
         True positive: in cache, and in horizon
@@ -492,11 +574,13 @@ class WindowedRepository(Repository):
 
 def main():
     """Main entry point for the script."""
-    r = WindowedRepository(
-        window=0.9, repo_dir=constants.BOTO_REPO, cache_ratio=0.3,
-        pre_fetch_size=0.1, distance_to_fetch=0.5, branch='develop')
-    r.evaluate()
-    print r.cache_size
+    logger = logging.getLogger('fixcache_logger')
+    logger.setLevel(logging.DEBUG)
+    r = RandomRepository(
+        repo_dir=constants.FACEBOOK_SDK_REPO, cache_ratio=1.0)
+    r.run_fixcache()
+    print r.hit_count
+    print r.miss_count
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -10,6 +10,7 @@ from constants import REPO_DATA, version_color
 from analysis import evaluate_repository
 # from graph_data import plot_1_data
 
+import numpy as np
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 from pylab import text
@@ -22,9 +23,9 @@ def _file_to_csv_by_name(version, repository_name, file_):
         dir_, file_
     )
     try:
+        print file_
         with open(file_, 'r') as csv_file:
             csv_reader = csv.DictReader(csv_file)
-
             return [row for row in csv_reader]
     except:
         pass
@@ -95,47 +96,37 @@ def plot_several(pfs, dtf, version, figure_name=None):
 def plot_one(repo_name, pfs, dtf, version, fig_name=None):
     """Plot a single repository data."""
     x = range(100)
+    print "a"
     csv_reader = _file_to_csv(version, repo_name, pfs, dtf)
+    csv_random_file = _file_to_csv_by_name(
+        'random',
+        repo_name,
+        'analyse_by_random_cache.csv')
 
     if csv_reader is None:
+        print "b"
         return
 
     hit_rate = get_column(csv_reader, 'hit_rate')
-    pfs_size = get_column(csv_reader, 'pfs')
-    dtf_size = get_column(csv_reader, 'dtf')
 
-    fig = plt.figure()
+    fig, ax = plt.subplots()
 
     fig.suptitle(
         "Analysing fixcache for %s" % (repo_name + '.git',), fontsize=16,
         y=1.02)
-    ax1 = plt.subplot(211)
     legend_text = 'pfs = %s, dtf = %s' % (
         pfs, dtf)
     text(0.55, 0.07, legend_text, ha='center', va='center',
-         transform=ax1.transAxes, multialignment='left',
+         transform=ax.transAxes, multialignment='left',
          bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
-    ax1.set_ylabel('hit rate')
-    ax1.set_xlabel('cache size (%)')
-    ax1.grid(True)
-    ax1.plot(x, hit_rate, color='red', linewidth=2)
+    ax.set_ylabel('hit rate')
+    ax.set_xlabel('cache size (%)')
+    ax.grid(True)
+    ax.plot(x, hit_rate, color='red', linewidth=2)
 
-    ax2 = plt.subplot(212)
-    ax2.plot(x, pfs_size, color="blue", linewidth=2)
-    ax2.plot(x, dtf_size, color="green", linewidth=2)
-    ax2.set_ylabel('discrete pfs/dtf sizes')
-    ax2.set_xlabel('cache size (%)')
-    ax2.grid(True)
-
-    line1 = mlines.Line2D(
-        [], [], color="blue",
-        label="pfs size", linewidth=2)
-
-    line2 = mlines.Line2D(
-        [], [], color="green",
-        label="dtf size", linewidth=2)
-
-    ax2.legend(handles=[line1, line2], loc=2)
+    if csv_random_file is not None:
+        random_hit_rate = get_column(csv_random_file, 'hit_rate')
+        ax.plot(x, random_hit_rate, color='blue', linewidth=2)
 
     plt.show()
 
@@ -251,50 +242,79 @@ def plot_speedup(repo_name, pfs, dtf, *versions):
     plt.show()
 
 
-def evaluation(repo_name, cache_ratio, pfs,
-               dtf, version, branch='master', **kwargs):
+def evaluation(repo_name, cache_ratio, pfs, dtf,
+               version, branch='master', **kwargs):
     """Evaluate a repository, produce an evaluation graph."""
     if evaluate_repository(repo_name, float(cache_ratio), float(pfs),
                            float(dtf), version, branch=branch, **kwargs):
-        metadata = _file_to_csv_by_name(
-            version, repo_name,
-            'evaluate_%s_cr_%s_pfs_%s_dtf_%s_metadata.csv' % (
-                repo_name, cache_ratio, pfs, dtf))[0]
+        # metadata = _file_to_csv_by_name(
+        #     version, repo_name,
+        #     'evaluate_%s_cr_%s_pfs_%s_dtf_%s_metadata.csv' % (
+        #         repo_name, cache_ratio, pfs, dtf))[0]
+
+        n = 10
+        width = 0.2
 
         csv_reader = _file_to_csv_by_name(
             version, repo_name,
             'evaluate_%s_cr_%s_pfs_%s_dtf_%s.csv' % (
                 repo_name, cache_ratio, pfs, dtf))
 
-        x = get_column(csv_reader, 'counter')
-        true_positive = get_column(csv_reader, 'true_positive')
-        false_positive = get_column(csv_reader, 'false_positive')
-        true_negative = get_column(csv_reader, 'true_negative')
-        false_negative = get_column(csv_reader, 'false_negative')
+        ind = np.arange(n)
+        true_positive = get_column(csv_reader, 'true_positive')[:n]
+        false_positive = get_column(csv_reader, 'false_positive')[:n]
+        true_negative = get_column(csv_reader, 'true_negative')[:n]
+        false_negative = get_column(csv_reader, 'false_negative')[:n]
+        file_count = get_column(csv_reader, 'file_count')[:n]
+        counter = get_column(csv_reader, 'counter')[:n]
 
-        true_positive = [int(i) for i in true_positive]
-        false_positive = [int(i) for i in false_positive]
-        true_negative = [int(i) for i in true_negative]
-        false_negative = [int(i) for i in false_negative]
+        true_positive = np.array([float(i) for i in true_positive])
+        false_positive = np.array([float(i) for i in false_positive])
+        true_negative = np.array([float(i) for i in true_negative])
+        false_negative = np.array([float(i) for i in false_negative])
+        file_count = np.array([float(i) for i in file_count])
         fig, ax = plt.subplots()
 
-        if x is not None:
-            if true_positive is not None:
-                plt.plot(x, true_positive, color='blue')
+        tp_ratio = true_positive / (true_positive + false_positive)
+        fp_ratio = false_positive / (true_positive + false_positive)
+        tn_ratio = true_negative / (true_negative + false_negative)
+        fn_ratio = false_negative / (true_negative + false_negative)
 
-            if false_positive is not None:
-                plt.plot(x, false_positive, color='red')
+        ax.set_xticks(ind + width)
+        ax.set_xticklabels(counter)
 
-            if true_negative is not None:
-                plt.plot(x, true_negative, color='orange')
+        print true_positive
+        print file_count
+        print tp_ratio
+        print fp_ratio
 
-            if false_negative is not None:
-                plt.plot(x, false_negative, color='green')
+        # showing the bars
+        p1 = plt.bar(ind, tp_ratio, width, color='r')
+        p2 = plt.bar(ind, fp_ratio, width, color='y', bottom=tp_ratio)
+        p3 = plt.bar(ind + width, tn_ratio, width, color='blue')
+        p4 = plt.bar(ind + width, fn_ratio, width, color='green',
+                     bottom=tn_ratio)
 
-            ymax = max([max(true_positive), max(false_negative),
-                        max(true_negative), max(false_positive)])
-            print ymax
-            ax.set_ylim(-0.5, float(ymax) * 1.1)
+        ax.set_ylim(0.0, 1.34)
+
+        plt.legend(
+            (p1[0], p2[0], p3[0], p4[0]),
+            ('True positives', 'False positives', 'True negatives',
+             'False negatives'))
+
+        legend_text = 'pfs = %s, dtf = %s\n' % (pfs, dtf)
+
+        legend_text += 'cache_ratio = %s\ncommit_num = %s' % (
+            cache_ratio, REPO_DATA[repo_name]['commit_num'])
+
+        text(0.025, 0.975, legend_text, ha='left', va='top',
+             transform=ax.transAxes, multialignment='left',
+             bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
+
+        plt.ylabel('ratio')
+        plt.xlabel('number of commits after stopping fixcache')
+        plt.title("Evaluating fixcache for %s.git" % (repo_name,),
+                  y=1.02)
         plt.grid(True)
         plt.show()
 
