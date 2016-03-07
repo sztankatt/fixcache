@@ -130,7 +130,8 @@ class RandomRepository(RepositoryMixin):
                 self.file_set.remove_files(deleted_files)
 
                 if parsing.is_fix_commit(commit.message):
-                    random_file_set = self.file_set.get_random(self.cache_size)
+                    size = int(len(self.file_set.files) * self.cache_ratio + 1)
+                    random_file_set = self.file_set.get_random(size)
                     for file_ in files:
                         if file_.path in random_file_set:
                             self.hit_count += 1
