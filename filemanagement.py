@@ -7,6 +7,7 @@ import heapq
 import logging
 import helper_functions
 from helper_functions import DeprecatedError
+import random
 
 
 class IFilemanagementError(Exception):
@@ -211,14 +212,36 @@ class FileSet:
 
         return files
 
+    def get_existing_multiple(self, git_stat):
+        """Return files from git_stat, only returns files which exist.
+
+        Used by windowed repository only.
+        """
+        files = []
+        for path in git_stat:
+            if path in self.files:
+                file_ = self.files[path]
+                files.append(file_)
+
+        return files
+
     def remove_files(self, files):
+        """Remove several files from FileSet object."""
         for file_ in files:
-            if file_.file_path in self.files:
-                del self.files[file_.file_path]
+            if file_.path in self.files:
+                del self.files[file_.path]
 
     def changed_several(self, files, commit):
+        """Change several files in FileSet object."""
         for file_ in files:
             file_.changed(commit)
+
+    def get_random(self, size):
+        """Get random subset of files."""
+        if size > len(self.files):
+            size = len(self.files)
+
+        return random.sample(self.files, size)
 
 
 class Distance(object):
@@ -398,3 +421,14 @@ class DistanceSet(object):
 
         self.distance_set = set()
         self.distance_dict = {}
+
+    def remove_files(self, files):
+        """Remove distances associated with a file."""
+        for file_ in files:
+            file_distances = self._get_distances_for_files(file_)
+            for distance in file_distances:
+                distance_key = self._get_distance_key(
+                    distance.files['file1'], distance.files['file2'])
+                self.distance_set.discard(distance)
+                del self.distance_dict[distance_key]
+                del distance
