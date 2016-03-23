@@ -10,7 +10,7 @@ RASPBERRYIO_REPO = 'raspberryio'
 AML = 'awesome-machine-learning'
 CSV_ROOT = os.path.join(BASE_DIR, 'fixcache', 'analysis_output')
 LOGFILE = os.path.join(BASE_DIR, 'fixcache', 'logs', 'fixcache2.log')
-CURRENT_VERSION = 'version_4'
+CURRENT_VERSION = 'version_5'
 
 REPO_DICT = {
     'facebook-sdk': FACEBOOK_SDK_REPO,
@@ -46,5 +46,6 @@ version_color = {
     'version_1': 'red',
     'version_2': 'blue',
     'version_3': 'orange',
-    'version_4': 'green'
+    'version_4': 'green',
+    'version_5': 'yellow'
 }
