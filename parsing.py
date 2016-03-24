@@ -1,17 +1,17 @@
+"""Package to identify which line change is really a bug introduction."""
 import re
-""" Package to identify which line change is really a bug introduction,
-and which one does not affect the repository at all.
-"""
 
 
 def important_line(line):
-    """returns True if line is important, in terms of bug introduction"""
+    """Return True if line is important, in terms of bug introduction."""
     return True
 
 
 def _get_diff_deleted_line_counter(line):
-        """parses a diff line, to get the deleted lines in that diff.
-        If the line parsed isn't a delete line, returns None"""
+        """Parse a diff line, to get the deleted lines in that diff.
+
+        If the line parsed isn't a delete line, returns None.
+        """
         regex1 = r'@@\s-(?P<start_line>\d+),(?P<line_num>\d+)'
         regex2 = r'@@\s-(?P<start_line>\d+),'
         pattern1 = re.compile(regex1)
@@ -36,6 +36,7 @@ def _get_diff_deleted_line_counter(line):
 
 
 def get_deleted_lines_from_diff(diff_lines):
+    """Return deleted line numbers from a diff list."""
     counter = 0
     line_list = []
     for line in diff_lines:

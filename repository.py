@@ -62,8 +62,6 @@ class RepositoryMixin(object):
         # initializing commit hash to order mapping
         self.commit_order = {}
         self._init_commit_order()
-        self.distance_to_fetch = None
-        self.pre_fetch_size = None
 
     def _init_commit_order(self):
         commit_counter = 0
@@ -106,6 +104,8 @@ class RandomRepository(RepositoryMixin):
     def __init__(self, *args, **kwargs):
         """Init."""
         super(RandomRepository, self).__init__(*args, **kwargs)
+        self.distance_to_fetch = None
+        self.pre_fetch_size = None
 
     def run_fixcache(self):
         """Run fixcache for RandomRepository."""
@@ -178,6 +178,7 @@ class Repository(RepositoryMixin):
 
             # initializing commit hash to order mapping
             self.cache = cache.SimpleCache(self.cache_size)
+            print "ASD"
             self.distance_to_fetch = self._get_dtf(distance_to_fetch)
             self.pre_fetch_size = self._get_pfs(pre_fetch_size)
             self._init_commit_order()
@@ -185,6 +186,7 @@ class Repository(RepositoryMixin):
             raise RepositoryError(
                 "The path %s is not a valid repository" % (repo_dir))
         except ValueError as ve:
+            print self.distance_to_fetch
             logging.warning(ve)
             raise RepositoryError(
                 "Error occurred during Repository initalization")
@@ -208,6 +210,7 @@ class Repository(RepositoryMixin):
     @distance_to_fetch.setter
     def distance_to_fetch(self, value):
         if value < 0:
+            print value
             raise ValueError(
                 'distance_to_fetch has to be a non-negative integer')
         self._distance_to_fetch = value
@@ -352,6 +355,7 @@ class Repository(RepositoryMixin):
         return [x[1] for x in loc_file_list]
 
     def _get_dtf(self, dtf):
+        print dtf
         if dtf is None:
             distance_to_fetch = 1
             return distance_to_fetch

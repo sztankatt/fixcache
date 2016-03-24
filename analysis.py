@@ -73,7 +73,7 @@ def analyse_by_cache_ratio(version, repo, dtf, pfs, progressive=True):
                 (repo.repo_dir, ratio, dtf, pfs))
 
             csv_out.writerow(basic_fixcache_analyser(
-                repo, ratio))
+                repo, ratio, distance_to_fetch=dtf, pre_fetch_size=pfs))
 
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
