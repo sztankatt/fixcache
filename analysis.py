@@ -160,10 +160,10 @@ def evaluate_repository(repo_name, cache_ratio, pfs, dtf,
         for line in values:
             csv_out.writerow(line)
 
-    return True
-
     logger.info("Evaluation finished at %s\n" % (
         datetime.datetime.now(),))
+
+    return True
 
 
 def random_cache_analyser(repo_name, **kwargs):

@@ -178,7 +178,6 @@ class Repository(RepositoryMixin):
 
             # initializing commit hash to order mapping
             self.cache = cache.SimpleCache(self.cache_size)
-            print "ASD"
             self.distance_to_fetch = self._get_dtf(distance_to_fetch)
             self.pre_fetch_size = self._get_pfs(pre_fetch_size)
             self._init_commit_order()
@@ -186,7 +185,6 @@ class Repository(RepositoryMixin):
             raise RepositoryError(
                 "The path %s is not a valid repository" % (repo_dir))
         except ValueError as ve:
-            print self.distance_to_fetch
             logging.warning(ve)
             raise RepositoryError(
                 "Error occurred during Repository initalization")
@@ -210,7 +208,6 @@ class Repository(RepositoryMixin):
     @distance_to_fetch.setter
     def distance_to_fetch(self, value):
         if value < 0:
-            print value
             raise ValueError(
                 'distance_to_fetch has to be a non-negative integer')
         self._distance_to_fetch = value
@@ -253,7 +250,6 @@ class Repository(RepositoryMixin):
     def run_fixcache(self):
         """Run fixcache with the given variables."""
         for commit in self.commit_list:
-            print self.cache._get_free_space()
             logger.debug('Currently at %s' % commit)
             parents = commit.parents
             if len(parents) == 1:
@@ -286,13 +282,13 @@ class Repository(RepositoryMixin):
                 if parsing.is_fix_commit(commit.message):
                     for file_ in changed_files:
                         file_.fault(self.commit_order[commit.hexsha])
-                        deleted_line_dict = self._get_diff_deleted_lines(
-                            commit, parents[0])
-                        # print deleted_line_dict
-                        del_lines = deleted_line_dict[file_.path]
                         if self.cache.file_in(file_):
                             self.hit_count += 1
                         else:
+                            deleted_line_dict = self._get_diff_deleted_lines(
+                                commit, parents[0])
+                            # print deleted_line_dict
+                            del_lines = deleted_line_dict[file_.path]
                             self.miss_count += 1
                             self.cache.add(file_)
 
@@ -300,7 +296,6 @@ class Repository(RepositoryMixin):
                                 del_lines, file_.path, commit.parents[0])
 
                             closest_file_set = []
-
                             for c in line_intr_c:
                                 # get closest files is nlogk, so optimal
                                 cf = self.file_distances.get_closest_files(
@@ -310,7 +305,6 @@ class Repository(RepositoryMixin):
                                 closest_file_set += cf
 
                             closest_file_set = list(set(closest_file_set))
-
                             # there is no need for pre sorting, as already
                             # fetchiing closest files
                             self.cache.add_multiple(
@@ -355,7 +349,6 @@ class Repository(RepositoryMixin):
         return [x[1] for x in loc_file_list]
 
     def _get_dtf(self, dtf):
-        print dtf
         if dtf is None:
             distance_to_fetch = 1
             return distance_to_fetch

@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 """Test analyses."""
 
-from repository import RandomRepository
+from repository import Repository
 import constants
 import timeit
 import logging
@@ -12,11 +12,11 @@ logger = logging.getLogger('fixcache_logger')
 
 def main():
     """Main entry for test_analysis.py."""
-    logger.setLevel(logging.DEBUG)
-    repo = RandomRepository(
-        repo_dir=constants.FACEBOOK_SDK_REPO,
+    logger.setLevel(logging.INFO)
+    repo = Repository(
+        repo_dir=constants.BOTO_REPO,
         cache_ratio=0.3,
-        branch='master')
+        branch='develop')
 
     time = timeit.timeit(repo.run_fixcache, number=1)
     print time
