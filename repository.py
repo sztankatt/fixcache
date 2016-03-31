@@ -66,6 +66,7 @@ class RepositoryMixin(object):
     def _init_commit_order(self):
         commit_counter = 0
         for commit in self.commit_list:
+            logger.debug('Initializing commit %s' % (commit))
             self.commit_order[commit.hexsha] = commit_counter
             commit_counter += 1
 

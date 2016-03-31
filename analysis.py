@@ -221,21 +221,23 @@ def main(*args):
             for j in pfs_set:
                 analyse_by_cache_ratio(args[2], repo, dtf=i, pfs=j)
     elif args[0] == 'analyse_by_fixed_cache_ratio':
+        # dtf_set = [0.1, 0.15, 0.2, .., 0.55]
         dtf_set = [float(x + 2) / 20 for x in range(10)]
+        # pfs_set = [0.1, 0.15, ..., 0.35]
         pfs_set = dtf_set[:6]
-
+        # cache_ratio = [0.05, 0.1, 0.15, ..., 0.5]
         cache_ratio = [float(x + 1) / 20 for x in range(10)]
 
         for cr in cache_ratio:
             analyse_by_fixed_cache_ratio(
-                args[2], repo,
+                version=args[-1], repo_name=repo,
                 cache_ratio=cr, dtf_set=dtf_set, pfs_set=pfs_set)
     if args[0] == 'random_cache_analyser':
         random_cache_analyser(repo)
 
 if __name__ == '__main__':
     if sys.argv[1] != 'random_cache_analyser':
-        if sys.argv[3] != CURRENT_VERSION:
+        if sys.argv[-1] != CURRENT_VERSION:
             raise DeprecatedError('Only %s can be used as version' % (
                 CURRENT_VERSION,))
     with daemon.DaemonContext():
