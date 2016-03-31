@@ -417,7 +417,7 @@ class Repository(RepositoryMixin):
         if len(commit_list) == 0:
             return set()
 
-        for line_number in line_list:
+        for line in line_list:
             if parsing.important_line(line):
                 commit_set.append(commit)
 
