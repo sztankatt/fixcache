@@ -14,6 +14,7 @@ import os
 import sys
 import constants
 import helper_functions
+import datetime
 
 # TODO:
 # 1) introduce line count to the file. increase at each commit, if 0,
@@ -251,6 +252,9 @@ class Repository(RepositoryMixin):
     def run_fixcache(self):
         """Run fixcache with the given variables."""
         for commit in self.commit_list:
+            print '[%s]Currently at %s' % (
+                datetime.datetime.fromtimestamp(commit.committed_date).year,
+                commit)
             logger.debug('Currently at %s' % commit)
             parents = commit.parents
             if len(parents) == 1:
@@ -414,7 +418,6 @@ class Repository(RepositoryMixin):
             return set()
 
         for line_number in line_list:
-            commit, line = commit_list[line_number]
             if parsing.important_line(line):
                 commit_set.append(commit)
 
@@ -436,6 +439,7 @@ class Repository(RepositoryMixin):
 
         file_dict = {}
         for diff in diffs:
+            print diff
             deleted_lines = parsing.get_deleted_lines_from_diff(
                 diff.diff.splitlines())
             if diff.b_path is not None:
