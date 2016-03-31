@@ -210,6 +210,8 @@ def main(*args):
         repo = rep(constants.BOTO_REPO, branch='develop')
     elif args[1] == 'raspberryio':
         repo = rep(constants.RASPBERRYIO_REPO)
+    elif args[1] == 'django':
+        repo = rep(constants.DJANGO_REPO)
 
     if args[0] == 'analyse_by_cache_ratio':
         # boto3 tests

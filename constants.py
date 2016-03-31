@@ -7,6 +7,7 @@ FACEBOOK_SDK_REPO = 'facebook-sdk'
 BOTO3_REPO = 'boto3'
 BOTO_REPO = 'boto'
 RASPBERRYIO_REPO = 'raspberryio'
+DJANGO_REPO = 'django'
 AML = 'awesome-machine-learning'
 CSV_ROOT = os.path.join(BASE_DIR, 'fixcache', 'analysis_output')
 LOGFILE = os.path.join(BASE_DIR, 'fixcache', 'logs', 'fixcache2.log')
@@ -39,6 +40,11 @@ REPO_DATA = {
         'color': 'green',
         'legend': 'raspberryio.git (#c=614)',
         'commit_num': 614
+    },
+    'django': {
+        'color': 'yellow',
+        'legend': 'django.git (#c=22352)',
+        'commit_num': 22352
     }
 }
 
