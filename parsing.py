@@ -48,6 +48,8 @@ def get_deleted_lines_from_diff(diff_lines):
     if len(diff_lines) < 3:
         return []
     counter, _ = _get_diff_deleted_line_counter(diff_lines[2])
+    if counter is None:
+        return []
     counter -= 1
     line_list = []
     for line in diff_lines[3:]:

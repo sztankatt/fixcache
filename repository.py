@@ -252,9 +252,9 @@ class Repository(RepositoryMixin):
     def run_fixcache(self):
         """Run fixcache with the given variables."""
         for commit in self.commit_list:
-            print '[%s]Currently at %s' % (
-                datetime.datetime.fromtimestamp(commit.committed_date).year,
-                commit)
+            # print '[%s]Currently at %s' % (
+            #    datetime.datetime.fromtimestamp(commit.committed_date).year,
+            #    commit)
             logger.debug('Currently at %s' % commit)
             parents = commit.parents
             if len(parents) == 1:
@@ -439,7 +439,6 @@ class Repository(RepositoryMixin):
 
         file_dict = {}
         for diff in diffs:
-            print diff
             deleted_lines = parsing.get_deleted_lines_from_diff(
                 diff.diff.splitlines())
             if diff.b_path is not None:
@@ -578,7 +577,7 @@ class WindowedRepository(Repository):
 def main():
     """Main entry point for the script."""
     logger = logging.getLogger('fixcache_logger')
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     r = RandomRepository(
         repo_dir=constants.FACEBOOK_SDK_REPO, cache_ratio=1.0)
     r.run_fixcache()
