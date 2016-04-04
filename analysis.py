@@ -16,7 +16,6 @@ from helper_functions import DeprecatedError
 
 
 logger = logging.getLogger('fixcache_logger')
-logger.setLevel(logging.DEBUG)
 
 
 def basic_fixcache_analyser(repo, *args, **kwargs):
@@ -74,7 +73,8 @@ def analyse_by_cache_ratio(version, repo, distance_to_fetch,
                 (repo.repo_dir, ratio, distance_to_fetch, pre_fetch_size))
 
             csv_out.writerow(basic_fixcache_analyser(
-                repo, ratio, distance_to_fetch=distance_to_fetch,
+                repo=repo, cache_ratio=ratio,
+                distance_to_fetch=distance_to_fetch,
                 pre_fetch_size=pre_fetch_size))
 
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
@@ -109,17 +109,18 @@ def analyse_by_fixed_cache_ratio(version, repo, cache_ratio, pfs_set, dtf_set):
                      'of %s, with pfs of %s') %
                     (repo.repo_dir, cache_ratio, dtf, pfs))
                 csv_out.writerow(basic_fixcache_analyser(
-                    repo, cache_ratio, dtf, pfs))
+                    repo=repo, cache_ratio=cache_ratio, distance_to_fetch=dtf,
+                    pre_fetch_size=pfs))
 
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
 
-def evaluate_repository(repo_name, cache_ratio, pfs, dtf,
+def evaluate_repository(repo, cache_ratio, pfs, dtf,
                         version, **kwargs):
     """Evaluate a repository and save the evaluation results."""
     print cache_ratio
     repo = WindowedRepository(
-        repo_dir=constants.REPO_DICT[repo_name],
+        repo_dir=constants.REPO_DICT[repo],
         cache_ratio=cache_ratio,
         pre_fetch_size=pfs,
         distance_to_fetch=dtf,
@@ -131,12 +132,12 @@ def evaluate_repository(repo_name, cache_ratio, pfs, dtf,
         os.makedirs(dir_)
 
     file_ = os.path.join(dir_, 'evaluate_%s_cr_%s_pfs_%s_dtf_%s.csv' % (
-        repo_name, cache_ratio, pfs, dtf))
+        repo, cache_ratio, pfs, dtf))
 
     file_metadata = os.path.join(
         dir_,
         'evaluate_%s_cr_%s_pfs_%s_dtf_%s_metadata.csv' % (
-            repo_name, cache_ratio, pfs, dtf))
+            repo, cache_ratio, pfs, dtf))
 
     if os.path.exists(file_) and os.path.exists(file_metadata):
         logger.info('Evaluation exists.\nExit\n')
@@ -168,12 +169,12 @@ def evaluate_repository(repo_name, cache_ratio, pfs, dtf,
     return True
 
 
-def random_cache_analyser(repo_name, **kwargs):
+def random_cache_analyser(repo, **kwargs):
     """Analyse a repository by cache ratio, with given pfs and dtf."""
     logger.info(
         "Starting fixcache analysis for %s with random cache, at %s" %
-        (repo_name.repo_dir, datetime.datetime.now()))
-    dir_ = os.path.join(constants.CSV_ROOT, 'random', repo_name.repo_dir)
+        (repo.repo_dir, datetime.datetime.now()))
+    dir_ = os.path.join(constants.CSV_ROOT, 'random', repo.repo_dir)
 
     if not os.path.exists(dir_):
         os.makedirs(dir_)
@@ -193,7 +194,8 @@ def random_cache_analyser(repo_name, **kwargs):
         for ratio in cache_ratio_range:
 
             csv_out.writerow(basic_fixcache_analyser(
-                repo_name, ratio, pfs=0, distance_to_fetch=0))
+                repo=repo, cache_ratio=ratio,
+                pre_fetch_size=0, distance_to_fetch=0))
 
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
@@ -210,7 +212,7 @@ def main(parser):
             parser.error('Version has to be %s' % (CURRENT_VERSION,))
         else:
             version = 'version_' + str(CURRENT_VERSION)
-            repo = Repository(args.repository)
+            repo = Repository(args.repository, branch=args.b)
 
             if args.function == 'analyse_by_cache_ratio':
                 dtf_set = [0.1, 0.2, 0.3, 0.4, 0.5]
@@ -230,7 +232,7 @@ def main(parser):
 
                 for cr in cache_ratio:
                     analyse_by_fixed_cache_ratio(
-                        version=version, repo_name=repo,
+                        version=version, repo=repo,
                         cache_ratio=cr, dtf_set=dtf_set, pfs_set=pfs_set)
             elif args.function == 'analyse_single':
                 if args.pfs is None or args.dtf is None:
@@ -257,11 +259,19 @@ parser.add_argument('repository', metavar='repo')
 parser.add_argument('--cr', '--cache_ratio', type=float)
 parser.add_argument('--pfs', '--pre_fetch_size', type=float)
 parser.add_argument('--dtf', '--distance_to_fetch', type=float)
+parser.add_argument('--b', '--branch', type=str, default='master')
+parser.add_argument('--logging', default='info')
 parser.add_argument('--v', '--version', type=int)
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
+
+    if args.logging == 'info':
+        logger.setLevel(logging.INFO)
+    elif args.logging == 'debug':
+        logger.setLevel(logging.DEBUG)
+
     if args.d:
         with daemon.DaemonContext():
             main(parser)

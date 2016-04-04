@@ -35,7 +35,7 @@ class Cache(object):
     def _find_file_to_remove(self):
         raise NotImplementedError
 
-    def _order_files(self):
+    def _get_files_to_remove(self, number):
         raise NotImplementedError
 
     def _remove_multiple(self, number=1):
@@ -43,7 +43,7 @@ class Cache(object):
             # empty the whole file set
             self.file_set = set()
         else:
-            remove_file_set = set(self._order_files()[:number])
+            remove_file_set = set(self._get_files_to_remove(number))
             self.file_set -= remove_file_set
 
     def _remove(self):
@@ -134,8 +134,11 @@ class SimpleCache(Cache):
 
         return file_to_remove
 
-    def _order_files(self):
+    def _get_files_to_remove(self, number):
+        """Return the filrd with smallest last_found."""
         file_list = list(self.file_set)
-        file_list.sort(key=lambda x: x.last_found)
+        file_tuple_list = helper_functions.get_top_elements(
+            [(-x.last_found, x) for x in file_list], number)
+        file_list = [x[1] for x in file_tuple_list]
 
         return file_list

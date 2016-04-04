@@ -47,7 +47,6 @@ class RepositoryMixin(object):
         """Init."""
         self.file_set = fm.FileSet()
         self.cache_ratio = cache_ratio
-        print self.cache_ratio
         self.hit_count = 0
         self.miss_count = 0
         self.repo_dir = repo_dir
@@ -181,8 +180,9 @@ class Repository(RepositoryMixin):
 
             # initializing commit hash to order mapping
             self.cache = cache.SimpleCache(self.cache_size)
-            self.distance_to_fetch = self._get_dtf(distance_to_fetch)
-            self.pre_fetch_size = self._get_pfs(pre_fetch_size)
+            self.distance_to_fetch = self._get_distance_to_fetch(
+                distance_to_fetch)
+            self.pre_fetch_size = self._get_pre_fetch_size(pre_fetch_size)
             self._init_commit_order()
         except git.exc.NoSuchPathError:
             raise RepositoryError(
@@ -243,10 +243,11 @@ class Repository(RepositoryMixin):
                 self.cache_size = 1
 
         if distance_to_fetch is not None:
-            self.distance_to_fetch = self._get_dtf(distance_to_fetch)
+            self.distance_to_fetch = self._get_distance_to_fetch(
+                distance_to_fetch)
 
         if pre_fetch_size is not None:
-            self.pre_fetch_size = self._get_pfs(pre_fetch_size)
+            self.pre_fetch_size = self._get_pre_fetch_size(pre_fetch_size)
 
         self.cache.reset(self.cache_size)
 
@@ -349,32 +350,32 @@ class Repository(RepositoryMixin):
 
         return [x[1] for x in loc_file_list]
 
-    def _get_dtf(self, dtf):
-        if dtf is None:
+    def _get_distance_to_fetch(self, distance_to_fetch):
+        if distance_to_fetch is None:
             distance_to_fetch = 1
             return distance_to_fetch
 
-        if isinstance(dtf, int):
-            return dtf
-        elif isinstance(dtf, float):
-            dtf = int(dtf * float(self.cache_size))
-            if dtf == 0:
+        if isinstance(distance_to_fetch, int):
+            return distance_to_fetch
+        elif isinstance(distance_to_fetch, float):
+            distance_to_fetch = int(distance_to_fetch * float(self.cache_size))
+            if distance_to_fetch == 0:
                 return 1
             else:
-                return dtf
+                return distance_to_fetch
 
-    def _get_pfs(self, pfs):
-        if pfs is None:
+    def _get_pre_fetch_size(self, pre_fetch_size):
+        if pre_fetch_size is None:
             return 1
 
-        if isinstance(pfs, int):
-            return pfs
-        elif isinstance(pfs, float):
-            pfs = int(pfs * float(self.cache_size))
-            if pfs == 0:
+        if isinstance(pre_fetch_size, int):
+            return pre_fetch_size
+        elif isinstance(pre_fetch_size, float):
+            pre_fetch_size = int(pre_fetch_size * float(self.cache_size))
+            if pre_fetch_size == 0:
                 return 1
             else:
-                return pfs
+                return pre_fetch_size
 
     def _update_distance_set(self, files, commit):
         file_pairs = list(itertools.combinations(files, 2))

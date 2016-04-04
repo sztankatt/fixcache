@@ -15,7 +15,7 @@ def main():
     logger.setLevel(logging.INFO)
     repo = Repository(
         repo_dir=constants.BOTO3_REPO,
-        cache_ratio=0.9,
+        cache_ratio=1.0,
         pre_fetch_size=0.1,
         distance_to_fetch=0.5,
         branch='develop')

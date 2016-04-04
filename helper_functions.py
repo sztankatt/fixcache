@@ -18,7 +18,7 @@ def get_top_elements(item_list, k):
     """Top k elements of a list of tuples.
 
     First item of the tuple is the key.
-    The returned list is unordered
+    The returned list is a min-heap
     """
     heap = []
     for item in item_list:

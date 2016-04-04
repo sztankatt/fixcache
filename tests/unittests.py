@@ -5,6 +5,7 @@ import os
 from fixcache import filemanagement
 from fixcache import cache
 from fixcache import parsing
+from fixcache import helper_functions
 
 
 class FilemanagementTestCase(unittest.TestCase):
@@ -193,6 +194,16 @@ class CacheTestCase(unittest.TestCase):
 class ParsingTestCase(unittest.TestCase):
     def test_is_fix_commis(self):
         self.assertEqual(parsing.is_fix_commit('normal, commit'), False)
+        self.assertEqual(parsing.is_fix_commit('fixes'), True)
+        self.assertEqual(parsing.is_fix_commit('patched'), True)
+
+    def test_get_top_elements(self):
+        a = [54, 1, 23, 11]
+
+        b = helper_functions.get_top_elements(a, 2)
+
+        self.assertTrue(23 in b)
+        self.assertFalse(1 in b)
 
 
 if __name__ == '__main__':
