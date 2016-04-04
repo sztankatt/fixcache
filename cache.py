@@ -1,4 +1,5 @@
 import logging
+import helper_functions
 
 
 class Cache(object):
@@ -65,10 +66,8 @@ class Cache(object):
 
         return space
 
-    def _preprocess_multiple(self, files, pre_sort=True):
+    def _preprocess_multiple(self, files):
         files = filter(lambda x: x not in self.file_set, files)
-        if pre_sort:
-            files.sort(key=lambda x: x.last_found, reverse=True)
         return files
 
     def file_in(self, file_):
@@ -83,8 +82,8 @@ class Cache(object):
 
         self.file_set.add(file_)
 
-    def add_multiple(self, files, pre_sort=True):
-        files = self._preprocess_multiple(files, pre_sort)
+    def add_multiple(self, files):
+        files = self._preprocess_multiple(files)
 
         len_ = len(files)
 
@@ -97,7 +96,14 @@ class Cache(object):
             self._remove_multiple(to_remove)
             self.file_set = self.file_set | set(files)
         else:
-            self.file_set = set(files[:self.size])
+            # the cache is smaller than the number of file we want to insert
+            # we need to select the files which were recently used, to obey the
+            # LRU cache replacement policy
+            files_to_sort = helper_functions.get_top_elements(
+                [(x.last_found, x) for x in files], self.size)
+            files_to_insert = [x[1] for x in files_to_sort]
+            del self.file_set
+            self.file_set = set(files_to_insert)
 
     def remove_files(self, files):
         """Remove several files from the cache. Called for deleted files."""
@@ -116,7 +122,7 @@ class Cache(object):
 
 
 class SimpleCache(Cache):
-    """simple cache using least recent used cache remove policy"""
+    """simple cache using least recently used cache remove policy"""
     def _find_file_to_remove(self):
         file_to_remove = None
         for file_ in self.file_set:

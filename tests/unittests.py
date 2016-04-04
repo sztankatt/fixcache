@@ -1,7 +1,10 @@
 #! /usr/bin/env python
 import unittest
+import sys
+import os
 from fixcache import filemanagement
 from fixcache import cache
+from fixcache import parsing
 
 
 class FilemanagementTestCase(unittest.TestCase):
@@ -24,7 +27,7 @@ class FilemanagementTestCase(unittest.TestCase):
         self.assertEqual(self.file1.changes, 2)
         self.assertEqual(self.file1.faults, 0)
         self.assertEqual(self.file2.faults, 1)
-        self.assertEqual(self.file2.changes, 2)
+        self.assertEqual(self.file2.changes, 1)
 
     def test_file_in_list(self):
         self.file_list = [self.file1, self.file3]
@@ -83,8 +86,8 @@ class FilemanagementTestCase(unittest.TestCase):
         ds.add_occurrence(self.file1, self.file4, 1)
 
         self.assertEqual(ds.get_closest_files(self.file1, 1)[0], self.file2)
-        self.assertEqual(ds.get_closest_files(self.file1, 8),
-                         [self.file2, self.file3, self.file4])
+        self.assertEqual(set(ds.get_closest_files(self.file1, 8)),
+                         set([self.file2, self.file3, self.file4]))
 
 
 class CacheTestCase(unittest.TestCase):
@@ -143,6 +146,8 @@ class CacheTestCase(unittest.TestCase):
         self.file1.changed(50)
         self.file2.changed(30)
         self.file3.fault(32)
+        self.file3.changed(32)
+        self.file4.changed(15)
         self.file4.fault(15)
         self.file4.changed(21)
 
@@ -184,8 +189,15 @@ class CacheTestCase(unittest.TestCase):
 
         self.assertEqual(len(self.cache.file_set), 0)
 
+
+class ParsingTestCase(unittest.TestCase):
+    def test_is_fix_commis(self):
+        self.assertEqual(parsing.is_fix_commit('normal, commit'), False)
+
+
 if __name__ == '__main__':
     s1 = unittest.TestLoader().loadTestsFromTestCase(FilemanagementTestCase)
     s2 = unittest.TestLoader().loadTestsFromTestCase(CacheTestCase)
-    suite = unittest.TestSuite([s1, s2])
+    s3 = unittest.TestLoader().loadTestsFromTestCase(ParsingTestCase)
+    suite = unittest.TestSuite([s1, s2, s3])
     unittest.TextTestRunner(verbosity=2).run(suite)

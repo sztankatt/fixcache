@@ -47,6 +47,7 @@ class RepositoryMixin(object):
         """Init."""
         self.file_set = fm.FileSet()
         self.cache_ratio = cache_ratio
+        print self.cache_ratio
         self.hit_count = 0
         self.miss_count = 0
         self.repo_dir = repo_dir
@@ -175,7 +176,7 @@ class Repository(RepositoryMixin):
         """Initalization the Repository variables."""
         try:
             super(Repository, self).__init__(
-                repo_dir, cache_ratio=0.1, branch=branch)
+                repo_dir, cache_ratio=cache_ratio, branch=branch)
             self.file_distances = fm.DistanceSet()
 
             # initializing commit hash to order mapping
@@ -276,11 +277,6 @@ class Repository(RepositoryMixin):
 
                 self._cleanup_files(deleted_files)
 
-                self.file_set.changed_several(
-                    changed_files, self.commit_order[commit.hexsha])
-
-                files = [x[1] for x in f_info]
-
                 self._update_distance_set(
                     created_files + changed_files, commit)
 
@@ -313,7 +309,7 @@ class Repository(RepositoryMixin):
                             # there is no need for pre sorting, as already
                             # fetchiing closest files
                             self.cache.add_multiple(
-                                closest_file_set, pre_sort=False)
+                                closest_file_set)
 
                 new_entity_pre_fetch = self._get_per_rev_pre_fetch(
                     created_files, commit)
@@ -348,7 +344,7 @@ class Repository(RepositoryMixin):
             return file_list
 
         loc_file_list = helper_functions.get_top_elements(
-            [(-x.line_count, x) for x in file_list],
+            [(x.line_count, x) for x in file_list],
             self.pre_fetch_size)
 
         return [x[1] for x in loc_file_list]
@@ -408,18 +404,19 @@ class Repository(RepositoryMixin):
         commit_list = []
         commit_set = []
         try:
-            for commit, lines in self.repo.blame(commit, file_):
-                commit_list += [(commit, x) for x in lines]
+            for line_intr_c, lines in self.repo.blame(commit, file_):
+                commit_list += [(line_intr_c, x) for x in lines]
+
         except git.exc.GitCommandError:
             return set()
         finally:
             pass
         if len(commit_list) == 0:
             return set()
-
-        for line in line_list:
+        for line_num in line_list:
+            introducing_commit, line = commit_list[line_num]
             if parsing.important_line(line):
-                commit_set.append(commit)
+                commit_set.append(introducing_commit)
 
         return set(commit_set)
 

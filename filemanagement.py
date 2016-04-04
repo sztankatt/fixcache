@@ -134,9 +134,6 @@ class File(object):
 
     def fault(self, commit):
         """Called when file had a fault.
-
-        Explicitly calls changed().
-
         """
         try:
             self.faults += 1
@@ -209,6 +206,7 @@ class FileSet:
                     files.append(('deleted', file_))
                 else:
                     files.append(('changed', file_))
+                    file_.changed(commit_num)
 
         return files
 
@@ -407,7 +405,7 @@ class DistanceSet(object):
         ds = self._get_distances_for_files(file_)
 
         closest_files = helper_functions.get_top_elements(
-            [(-x.get_occurrence(commit), x.get_other_file(file_)) for x in ds],
+            [(x.get_occurrence(commit), x.get_other_file(file_)) for x in ds],
             number)
 
         return [x[1] for x in closest_files]

@@ -4,6 +4,10 @@ import re
 
 def important_line(line):
     """Return True if line is important, in terms of bug introduction."""
+    stripped_line = line.strip()
+    if stripped_line.startswith('#') or stripped_line == '':
+        return False
+
     return True
 
 
@@ -67,8 +71,18 @@ def get_deleted_lines_from_diff(diff_lines):
 def is_fix_commit(message):
         """Return True if commit object is flagged as fixing."""
         m = message
-        regex = r'[Ff][Ii][Xx]([Ee][Ss])*'
-        if re.search(regex, m) is not None:
-            return True
-        else:
-            return False
+        regexes = [
+            r'defect(s)?',
+            r'patch(ing|es|ed)?',
+            r'bug(s|fix(es)?)?',
+            r'(re)?fix(es|ed|ing|age\s?up(s)?)?',
+            r'debug(ged)?',
+            r'\#\d+',
+            r'back\s?out',
+            r'revert(ing|ed)?'
+        ]
+        for r in regexes:
+            if re.search(r, m) is not None:
+                return True
+
+        return False
