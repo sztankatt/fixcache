@@ -20,6 +20,10 @@ def get_top_elements(item_list, k):
     First item of the tuple is the key.
     The returned list is a min-heap
     """
+
+    if len(item_list) <= k:
+        return item_list
+
     heap = []
     for item in item_list:
         if len(heap) < k:
