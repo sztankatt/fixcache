@@ -9,6 +9,7 @@ import csv
 import logging
 import datetime
 import daemon
+import argparse
 
 from constants import CURRENT_VERSION
 from helper_functions import DeprecatedError
@@ -16,10 +17,6 @@ from helper_functions import DeprecatedError
 
 logger = logging.getLogger('fixcache_logger')
 logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler(constants.LOGFILE, "w")
-fh.setLevel(logging.INFO)
-logger.addHandler(fh)
-keep_fds = [fh.stream.fileno()]
 
 
 def basic_fixcache_analyser(repo, *args, **kwargs):
@@ -37,11 +34,13 @@ def basic_fixcache_analyser(repo, *args, **kwargs):
         time)
 
 
-def analyse_by_cache_ratio(version, repo, dtf, pfs, progressive=True):
+def analyse_by_cache_ratio(version, repo, distance_to_fetch,
+                           pre_fetch_size, progressive=True):
     """Analyse a repository by cache ratio, with given pfs and dtf."""
     logger.info(
         "Starting fixcache analysis for %s with dtf=%s, pfs=%s, at %s" %
-        (repo.repo_dir, dtf, pfs, datetime.datetime.now()))
+        (repo.repo_dir, distance_to_fetch,
+         pre_fetch_size, datetime.datetime.now()))
     dir_ = os.path.join(constants.CSV_ROOT, version, repo.repo_dir)
 
     if not os.path.exists(dir_):
@@ -49,12 +48,14 @@ def analyse_by_cache_ratio(version, repo, dtf, pfs, progressive=True):
 
     if progressive:
         file_ = os.path.join(
-            dir_, ('analyse_by_cache_ratio_progressive_dtf_' + str(dtf) +
-                   '_pfs_' + str(pfs) + '.csv')
+            dir_, ('analyse_by_cache_ratio_progressive_dtf_' +
+                   str(distance_to_fetch) +
+                   '_pfs_' + str(pre_fetch_size) + '.csv')
         )
     else:
         file_ = os.path.join(
-            dir_, ('analyse_by_cache_ratio_' + str(dtf) + '_pfs_' + str(pfs) +
+            dir_, ('analyse_by_cache_ratio_' + str(distance_to_fetch) +
+                   '_pfs_' + str(pre_fetch_size) +
                    '.csv'))
 
     if os.path.exists(file_):
@@ -70,10 +71,11 @@ def analyse_by_cache_ratio(version, repo, dtf, pfs, progressive=True):
             logging.debug(
                 ('Running fixcache for %s with ratio of %s and dtf of %s, ' +
                  'with pfs of %s') %
-                (repo.repo_dir, ratio, dtf, pfs))
+                (repo.repo_dir, ratio, distance_to_fetch, pre_fetch_size))
 
             csv_out.writerow(basic_fixcache_analyser(
-                repo, ratio, distance_to_fetch=dtf, pre_fetch_size=pfs))
+                repo, ratio, distance_to_fetch=distance_to_fetch,
+                pre_fetch_size=pre_fetch_size))
 
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
@@ -196,49 +198,72 @@ def random_cache_analyser(repo_name, **kwargs):
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
 
-def main(*args):
+def main(parser):
     """Main entry."""
-    if args[0] == 'random_cache_analyser':
-        rep = RandomRepository
-    else:
-        rep = Repository
-    if args[1] == 'facebook-sdk':
-        repo = rep(constants.FACEBOOK_SDK_REPO)
-    elif args[1] == 'boto3':
-        repo = rep(constants.BOTO3_REPO, branch='develop')
-    elif args[1] == 'boto':
-        repo = rep(constants.BOTO_REPO, branch='develop')
-    elif args[1] == 'raspberryio':
-        repo = rep(constants.RASPBERRYIO_REPO)
-    elif args[1] == 'django':
-        repo = rep(constants.DJANGO_REPO)
+    args = parser.parse_args()
 
-    if args[0] == 'analyse_by_cache_ratio':
-        # boto3 tests
-        dtf_set = [0.1, 0.2, 0.3, 0.4, 0.5]
-        pfs_set = [0.1, 0.15, 0.2]
-        for i in dtf_set:
-            for j in pfs_set:
-                analyse_by_cache_ratio(args[2], repo, dtf=i, pfs=j)
-    elif args[0] == 'analyse_by_fixed_cache_ratio':
-        # dtf_set = [0.1, 0.15, 0.2, .., 0.55]
-        dtf_set = [float(x + 2) / 20 for x in range(10)]
-        # pfs_set = [0.1, 0.15, ..., 0.35]
-        pfs_set = dtf_set[:6]
-        # cache_ratio = [0.05, 0.1, 0.15, ..., 0.5]
-        cache_ratio = [float(x + 1) / 20 for x in range(10)]
-
-        for cr in cache_ratio:
-            analyse_by_fixed_cache_ratio(
-                version=args[-1], repo_name=repo,
-                cache_ratio=cr, dtf_set=dtf_set, pfs_set=pfs_set)
-    if args[0] == 'random_cache_analyser':
+    if args.function == 'random_cache_analyser':
+        repo = RandomRepository(args.repository)
         random_cache_analyser(repo)
+    else:
+        if args.v != CURRENT_VERSION:
+            parser.error('Version has to be %s' % (CURRENT_VERSION,))
+        else:
+            version = 'version_' + str(CURRENT_VERSION)
+            repo = Repository(args.repository)
+
+            if args.function == 'analyse_by_cache_ratio':
+                dtf_set = [0.1, 0.2, 0.3, 0.4, 0.5]
+                pfs_set = [0.1, 0.15, 0.2]
+                for i in dtf_set:
+                    for j in pfs_set:
+                        analyse_by_cache_ratio(
+                            version=version, repo=repo, distance_to_fetch=i,
+                            pre_fetch_size=j)
+            elif args.function == 'analyse_by_fixed_cache_ratio':
+                # dtf_set = [0.1, 0.15, 0.2, .., 0.55]
+                dtf_set = [float(x + 2) / 20 for x in range(10)]
+                # pfs_set = [0.1, 0.15, ..., 0.35]
+                pfs_set = dtf_set[:6]
+                # cache_ratio = [0.05, 0.1, 0.15, ..., 0.5]
+                cache_ratio = [float(x + 1) / 20 for x in range(10)]
+
+                for cr in cache_ratio:
+                    analyse_by_fixed_cache_ratio(
+                        version=version, repo_name=repo,
+                        cache_ratio=cr, dtf_set=dtf_set, pfs_set=pfs_set)
+            elif args.function == 'analyse_single':
+                if args.pfs is None or args.dtf is None:
+                    parser.error('pfs and dtf has to be set')
+                else:
+                    analyse_by_cache_ratio(
+                        version=version, repo=repo, pre_fetch_size=args.pfs,
+                        distance_to_fetch=args.dtf)
+
+ANALYSIS_CHOICES = [
+    'analyse_by_cache_ratio',
+    'analyse_single',
+    'random_cache_analyser',
+    'analyse_by_fixed_cache_ratio']
+
+parser = argparse.ArgumentParser(
+    description='Run FixCache analysis for different repos')
+
+parser.add_argument('-d', '-daemon', action='store_true')
+parser.add_argument(
+    'function', metavar='fun', choices=ANALYSIS_CHOICES,
+    help='function for an analysis')
+parser.add_argument('repository', metavar='repo')
+parser.add_argument('--cr', '--cache_ratio', type=float)
+parser.add_argument('--pfs', '--pre_fetch_size', type=float)
+parser.add_argument('--dtf', '--distance_to_fetch', type=float)
+parser.add_argument('--v', '--version', type=int)
+
 
 if __name__ == '__main__':
-    if sys.argv[1] != 'random_cache_analyser':
-        if sys.argv[-1] != CURRENT_VERSION:
-            raise DeprecatedError('Only %s can be used as version' % (
-                CURRENT_VERSION,))
-    with daemon.DaemonContext():
-        main(*sys.argv[1:])
+    args = parser.parse_args()
+    if args.d:
+        with daemon.DaemonContext():
+            main(parser)
+    else:
+        main(parser)
