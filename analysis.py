@@ -205,7 +205,7 @@ def main(parser):
     args = parser.parse_args()
 
     if args.function == 'random_cache_analyser':
-        repo = RandomRepository(args.repository)
+        repo = RandomRepository(repo_dir=args.repository, branch=args.b)
         random_cache_analyser(repo)
     else:
         if args.v != CURRENT_VERSION:
