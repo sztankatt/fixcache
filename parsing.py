@@ -62,8 +62,13 @@ def get_deleted_lines_from_diff(diff_lines):
             counter += 1
         elif line.startswith('+'):
             pass
+        elif line.startswith("@@"):
+            counter, _ = _get_diff_deleted_line_counter(line)
+            counter -= 1
         else:
             counter += 1
+
+        # print counter, ' ', line
 
     return line_list
 

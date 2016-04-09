@@ -14,11 +14,11 @@ def main():
     """Main entry for test_analysis.py."""
     logger.setLevel(logging.INFO)
     repo = Repository(
-        repo_dir=constants.BOTO3_REPO,
-        cache_ratio=1.0,
+        repo_dir=constants.RASPBERRYIO_REPO,
+        cache_ratio=0.2,
         pre_fetch_size=0.1,
         distance_to_fetch=0.5,
-        branch='develop')
+        branch='master')
 
     time = timeit.timeit(repo.run_fixcache, number=1)
     print time
