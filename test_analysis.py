@@ -20,10 +20,6 @@ def main():
 
     time = timeit.timeit(repo.run_fixcache, number=1)
     print time
-    print repo.cache_size
-    print repo.cache_ratio
-    print repo.distance_to_fetch
-    print repo.pre_fetch_size
     print repo.hit_count
     print repo.miss_count
 if __name__ == '__main__':

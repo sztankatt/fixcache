@@ -16,6 +16,8 @@ import constants
 import helper_functions
 import datetime
 
+from git.db import GitCmdObjectDB
+
 # TODO:
 # 1) introduce line count to the file. increase at each commit, if 0,
 #    file deleted
@@ -52,7 +54,7 @@ class RepositoryMixin(object):
         self.repo_dir = repo_dir
 
         repo_full_path = os.path.join(constants.REPO_DIR, repo_dir)
-        self.repo = git.Repo(repo_full_path)
+        self.repo = git.Repo(repo_full_path, odbt=GitCmdObjectDB)
         assert not self.repo.bare
         self.commit_list = list(reversed(
             list(self.repo.iter_commits(branch))))
@@ -410,6 +412,7 @@ class Repository(RepositoryMixin):
                 commit_list += [(line_intr_c, x) for x in lines]
 
         except git.exc.GitCommandError:
+            print "git.exc.GitCommandError"
             return set()
         finally:
             pass
