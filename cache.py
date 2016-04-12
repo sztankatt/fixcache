@@ -2,7 +2,7 @@ import logging
 import helper_functions
 
 
-class Cache(object):
+class AbstractCache(object):
     _hit = True
     _miss = False
 
@@ -49,7 +49,7 @@ class Cache(object):
     def _remove(self):
         len_ = len(self.file_set)
 
-        if len_ < 0:
+        if len_ < 1:
             return None
         elif len_ == 1:
             file_ = self.file_set.pop()
@@ -121,7 +121,7 @@ class Cache(object):
             self.size = size
 
 
-class SimpleCache(Cache):
+class Cache(AbstractCache):
     """simple cache using least recently used cache remove policy"""
     def _find_file_to_remove(self):
         file_to_remove = None
@@ -135,7 +135,7 @@ class SimpleCache(Cache):
         return file_to_remove
 
     def _get_files_to_remove(self, number):
-        """Return the filrd with smallest last_found."""
+        """Return the files with smallest last_found."""
         file_list = list(self.file_set)
         file_tuple_list = helper_functions.get_top_elements(
             [(-x.last_found, x) for x in file_list], number)

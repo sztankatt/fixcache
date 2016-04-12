@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 """Test analyses."""
 
-from repository import Repository
+from repository import Repository, RandomRepository
 import constants
 import timeit
 import logging
@@ -13,11 +13,9 @@ logger = logging.getLogger('fixcache_logger')
 def main():
     """Main entry for test_analysis.py."""
     logger.setLevel(logging.INFO)
-    repo = Repository(
+    repo = RandomRepository(
         repo_dir=constants.RASPBERRYIO_REPO,
         cache_ratio=0.2,
-        pre_fetch_size=0.1,
-        distance_to_fetch=0.5,
         branch='master')
 
     time = timeit.timeit(repo.run_fixcache, number=1)

@@ -132,8 +132,7 @@ class RandomRepository(RepositoryMixin):
                 self.file_set.remove_files(deleted_files)
 
                 if parsing.is_fix_commit(commit.message):
-                    size = int(len(self.file_set.files) * self.cache_ratio + 1)
-                    random_file_set = self.file_set.get_random(size)
+                    random_file_set = self.file_set.get_random(self.cache_size)
                     for file_ in files:
                         if file_.path in random_file_set:
                             self.hit_count += 1
@@ -179,7 +178,7 @@ class Repository(RepositoryMixin):
             self.file_distances = fm.DistanceSet()
 
             # initializing commit hash to order mapping
-            self.cache = cache.SimpleCache(self.cache_size)
+            self.cache = cache.Cache(self.cache_size)
             self.distance_to_fetch = self._get_distance_to_fetch(
                 distance_to_fetch)
             self.pre_fetch_size = self._get_pre_fetch_size(pre_fetch_size)
@@ -259,6 +258,7 @@ class Repository(RepositoryMixin):
             #    commit)
             logger.debug('Currently at %s' % commit)
             parents = commit.parents
+
             if len(parents) == 1:
                 # return the list of tuples by file info
                 f_info = self.file_set.get_and_update_multiple(
@@ -384,7 +384,7 @@ class Repository(RepositoryMixin):
             self.file_distances.add_occurrence(
                 *pair, commit=self.commit_order[commit.hexsha])
 
-    def _get_line_introducing_commits(self, line_list, file_, commit):
+    def _get_line_introducing_commits(self, line_list, file_path, commit):
         """Return the set of commits which introduced lines in a file.
 
         Ideally this will be a single commit, not more.
@@ -404,8 +404,9 @@ class Repository(RepositoryMixin):
         """
         commit_list = []
         commit_set = []
+        print self.repo.blame(commit, file_path)
         try:
-            for line_intr_c, lines in self.repo.blame(commit, file_):
+            for line_intr_c, lines in self.repo.blame(commit, file_path):
                 commit_list += [(line_intr_c, x) for x in lines]
 
         except git.exc.GitCommandError:

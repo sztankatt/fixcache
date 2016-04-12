@@ -285,6 +285,7 @@ class Distance(object):
 
     def get_distance(self, commit=None):
         """Return the distance which is 1/occurrence."""
+        raise DeprecatedError
         try:
             occurrence = self.get_occurrence(commit)
             return 1.0 / float(occurrence)
@@ -296,6 +297,7 @@ class Distance(object):
 
     def get_occurrence(self, commit=None):
         """Return the occurence for a commit number in linear time."""
+        print self.occurrence_list
         if commit is None:
             return len(self.occurrence_list)
 

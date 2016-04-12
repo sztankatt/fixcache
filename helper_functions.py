@@ -5,7 +5,7 @@ import heapq
 class DeprecatedError(Exception):
     """Raise if function not used anymore."""
 
-    def __init__(self, value):
+    def __init__(self, value="This method was deprecated.", method=None):
         """Overwrite default init."""
         self.value = value
 
