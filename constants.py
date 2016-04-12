@@ -11,7 +11,7 @@ DJANGO_REPO = 'django'
 AML = 'awesome-machine-learning'
 CSV_ROOT = os.path.join(BASE_DIR, 'fixcache', 'analysis_output')
 LOGFILE = os.path.join(BASE_DIR, 'fixcache', 'logs', 'fixcache2.log')
-CURRENT_VERSION = 6
+CURRENT_VERSION = 5
 
 REPO_DICT = {
     'facebook-sdk': FACEBOOK_SDK_REPO,
