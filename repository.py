@@ -404,7 +404,6 @@ class Repository(RepositoryMixin):
         """
         commit_list = []
         commit_set = []
-        print self.repo.blame(commit, file_path)
         try:
             for line_intr_c, lines in self.repo.blame(commit, file_path):
                 commit_list += [(line_intr_c, x) for x in lines]
