@@ -297,7 +297,6 @@ class Distance(object):
 
     def get_occurrence(self, commit=None):
         """Return the occurence for a commit number in linear time."""
-        print self.occurrence_list
         if commit is None:
             return len(self.occurrence_list)
 

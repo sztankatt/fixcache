@@ -1,24 +1,32 @@
 #! /usr/bin/env python
 """docstring."""
+import argparse
+
 import csv
+
 import os
-import sys
+
+from analysis import evaluate_repository
 
 import constants
 
-from constants import REPO_DATA, version_color
-from analysis import evaluate_repository
+from constants import REPO_DATA, version_color, CURRENT_VERSION
 # from graph_data import plot_1_data
 
-import numpy as np
 import matplotlib.lines as mlines
+
 import matplotlib.pyplot as plt
+
+import numpy as np
+
+import daemon
+
 from pylab import text
 
 
-def _file_to_csv_by_name(version, repository_name, file_):
+def _file_to_csv_by_name(version, repo_name, file_):
     """Get the csv file to a list of rows, as tuples."""
-    dir_ = os.path.join(constants.CSV_ROOT, version, repository_name)
+    dir_ = os.path.join(constants.CSV_ROOT, version, repo_name)
     file_ = os.path.join(
         dir_, file_
     )
@@ -31,12 +39,13 @@ def _file_to_csv_by_name(version, repository_name, file_):
         pass
 
 
-def _file_to_csv(version, repository_name, pfs, dtf):
+def _file_to_csv(version, repo_name, pre_fetch_size, distance_to_fetch):
     """Read file into csv type python object."""
-    file_ = ('analyse_by_cache_ratio_progressive_dtf_' + str(dtf) +
-             '_pfs_' + str(pfs) + '.csv')
+    file_ = ('analyse_by_cache_ratio_progressive_dtf_' +
+             str(distance_to_fetch) + '_pfs_' + str(pre_fetch_size) + '.csv')
 
-    return _file_to_csv_by_name(version, repository_name, file_)
+    return _file_to_csv_by_name(
+        version=version, repo_name=repo_name, file_=file_)
 
 
 def calc_hit_rate(x, y):
@@ -55,7 +64,7 @@ def get_column(csv_reader, col_name):
             return [x[col_name] for x in csv_reader]
 
 
-def plot_several(pfs, dtf, version, figure_name=None):
+def plot_several(pre_fetch_size, distance_to_fetch, version, figure_name=None):
     """Sample plot of several different repos."""
     x = range(100)
     legend = []
@@ -64,8 +73,9 @@ def plot_several(pfs, dtf, version, figure_name=None):
 
     for repo_name in REPO_DATA:
         csv_reader = _file_to_csv(
-            version,
-            repo_name, pfs, dtf)
+            version=version,
+            repo_name=repo_name, pre_fetch_size=pre_fetch_size,
+            distance_to_fetch=distance_to_fetch)
         y = get_column(csv_reader, 'hit_rate')
         if y is not None:
             plt.plot(x, y, color=REPO_DATA[repo_name]['color'])
@@ -84,7 +94,7 @@ def plot_several(pfs, dtf, version, figure_name=None):
         plt.title(figure_name)
 
     legend_text = 'pfs = %s, dtf = %s' % (
-        pfs, dtf)
+        pre_fetch_size, distance_to_fetch)
     text(0.978, 0.3, legend_text, ha='right', va='top',
          transform=ax.transAxes, multialignment='left', fontsize=12,
          bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
@@ -93,11 +103,14 @@ def plot_several(pfs, dtf, version, figure_name=None):
     plt.show()
 
 
-def plot_one(repo_name, pfs, dtf, version, fig_name=None):
+def plot_one(repo_name, pre_fetch_size,
+             distance_to_fetch, version, fig_name=None):
     """Plot a single repository data."""
     x = range(100)
     print "a"
-    csv_reader = _file_to_csv(version, repo_name, pfs, dtf)
+    csv_reader = _file_to_csv(version=version, repo_name=repo_name,
+                              pre_fetch_size=pre_fetch_size,
+                              distance_to_fetch=distance_to_fetch)
     csv_random_file = _file_to_csv_by_name(
         'random',
         repo_name,
@@ -115,7 +128,7 @@ def plot_one(repo_name, pfs, dtf, version, fig_name=None):
         "Analysing fixcache for %s" % (repo_name + '.git',), fontsize=16,
         y=1.02)
     legend_text = 'pfs = %s, dtf = %s' % (
-        pfs, dtf)
+        pre_fetch_size, distance_to_fetch)
     text(0.55, 0.07, legend_text, ha='center', va='center',
          transform=ax.transAxes, multialignment='left',
          bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
@@ -141,7 +154,7 @@ def plot_fixed_cache_ratio(repo_name, cache_ratio, version, fig_name=None):
     if csv_reader is None:
         return
 
-    hit_rate = get_column(csv_reader, 'hit_rate')
+    hit_rate = get_column(csv_reader=csv_reader, col_name='hit_rate')
     # cache_size = get_column(csv_reader, 'cache_size')[0]
 
     base = [float(x + 2) / 20 for x in range(10)]
@@ -169,7 +182,8 @@ def plot_fixed_cache_ratio(repo_name, cache_ratio, version, fig_name=None):
     plt.show()
 
 
-def plot_different_versions(repo_name, pfs, dtf, fig_name=None):
+def plot_different_versions(repo_name, pre_fetch_size, distance_to_fetch,
+                            fig_name=None):
     """Sample plot of several different repos."""
     x = range(100)
     legend = []
@@ -178,8 +192,9 @@ def plot_different_versions(repo_name, pfs, dtf, fig_name=None):
 
     for version in version_color:
         csv_reader = _file_to_csv(
-            version,
-            repo_name, pfs, dtf)
+            version=version, repo_name=repo_name,
+            pre_fetch_size=pre_fetch_size, distance_to_fetch=distance_to_fetch)
+
         y = get_column(csv_reader, 'hit_rate')
         if y is not None:
             plt.plot(x, y, color=version_color[version])
@@ -195,7 +210,7 @@ def plot_different_versions(repo_name, pfs, dtf, fig_name=None):
     plt.ylabel('hit rate')
     plt.xlabel('cache size (%)')
     legend_text = 'pfs = %s, dtf = %s\ncommit_num = %s' % (
-        pfs, dtf, REPO_DATA[repo_name]['commit_num'])
+        pre_fetch_size, distance_to_fetch, REPO_DATA[repo_name]['commit_num'])
     text(0.55, 0.07, legend_text, ha='center', va='center',
          transform=ax.transAxes, multialignment='left',
          bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
@@ -204,26 +219,28 @@ def plot_different_versions(repo_name, pfs, dtf, fig_name=None):
     plt.show()
 
 
-def plot_speedup(repo_name, pfs, dtf, *versions):
+def plot_speedup(repo_name, pre_fetch_size, distance_to_fetch, versions):
     """Speedup plot."""
-    x = range(100)
+    x = [float(p + 1) / 100 for p in range(100)]
     if len(versions) != 2:
         return
     csv_reader1 = _file_to_csv(
-        versions[0], repo_name,
-        pfs, dtf)
+        version=versions[0], repo_name=repo_name,
+        pre_fetch_size=pre_fetch_size, distance_to_fetch=distance_to_fetch)
     y1 = get_column(csv_reader1, 'ttr')
 
     csv_reader2 = _file_to_csv(
-        versions[1], repo_name,
-        pfs, dtf)
+        version=versions[1], repo_name=repo_name,
+        pre_fetch_size=pre_fetch_size, distance_to_fetch=distance_to_fetch)
 
     y2 = get_column(csv_reader2, 'ttr')
 
     fig, ax = plt.subplots()
 
     if y1 is not None and y2 is not None:
-        speedup_y = [float(y1[i]) / float(y2[i]) for i in x]
+        speedup_y = [
+            float(
+                y1[int(i * 100) - 1]) / float(y2[int(i * 100 - 1)]) for i in x]
 
         plt.plot(x, speedup_y, color='blue')
 
@@ -231,9 +248,9 @@ def plot_speedup(repo_name, pfs, dtf, *versions):
         repo_name, versions[0], versions[1]),
         y=1.02)
     plt.ylabel('speedup')
-    plt.xlabel('cache size (%)')
+    plt.xlabel('cache ratio')
     legend_text = 'pfs = %s, dtf = %s\ncommit_num = %s' % (
-        pfs, dtf, REPO_DATA[repo_name]['commit_num'])
+        pre_fetch_size, distance_to_fetch, REPO_DATA[repo_name]['commit_num'])
     text(0.98, 0.03, legend_text, ha='right', va='bottom',
          transform=ax.transAxes, multialignment='left',
          bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
@@ -242,11 +259,12 @@ def plot_speedup(repo_name, pfs, dtf, *versions):
     plt.show()
 
 
-def evaluation(repo_name, cache_ratio, pfs, dtf,
+def evaluation(repo_name, cache_ratio, pre_fetch_size, distance_to_fetch,
                version, branch='master', **kwargs):
     """Evaluate a repository, produce an evaluation graph."""
-    if evaluate_repository(repo_name, float(cache_ratio), float(pfs),
-                           float(dtf), version, branch=branch, **kwargs):
+    if evaluate_repository(repo_name, float(cache_ratio),
+                           float(pre_fetch_size), float(distance_to_fetch),
+                           version, branch=branch, **kwargs):
         # metadata = _file_to_csv_by_name(
         #     version, repo_name,
         #     'evaluate_%s_cr_%s_pfs_%s_dtf_%s_metadata.csv' % (
@@ -256,9 +274,9 @@ def evaluation(repo_name, cache_ratio, pfs, dtf,
         width = 0.2
 
         csv_reader = _file_to_csv_by_name(
-            version, repo_name,
-            'evaluate_%s_cr_%s_pfs_%s_dtf_%s.csv' % (
-                repo_name, cache_ratio, pfs, dtf))
+            version=version, repo_name=repo_name,
+            file_='evaluate_%s_cr_%s_pfs_%s_dtf_%s.csv' % (
+                repo_name, cache_ratio, pre_fetch_size, distance_to_fetch))
 
         ind = np.arange(n)
         true_positive = get_column(csv_reader, 'true_positive')[:n]
@@ -302,7 +320,8 @@ def evaluation(repo_name, cache_ratio, pfs, dtf,
             ('True positives', 'False positives', 'True negatives',
              'False negatives'))
 
-        legend_text = 'pfs = %s, dtf = %s\n' % (pfs, dtf)
+        legend_text = 'pfs = %s, dtf = %s\n' % (
+            pre_fetch_size, distance_to_fetch)
 
         legend_text += 'cache_ratio = %s\ncommit_num = %s' % (
             cache_ratio, REPO_DATA[repo_name]['commit_num'])
@@ -319,19 +338,83 @@ def evaluation(repo_name, cache_ratio, pfs, dtf,
         plt.show()
 
 
-def main(function, *args):
+def main(args):
     """Docstring."""
-    functions = {
-        'plot_one': plot_one,
-        'plot_several': plot_several,
-        'plot_fixed_cache_ratio': plot_fixed_cache_ratio,
-        'plot_different_versions': plot_different_versions,
-        'plot_speedup': plot_speedup,
-        'evaluation': evaluation
+    fun = args.function
+    if fun == 'plot_one':
+        if args.v and args.dtf and args.pfs:
+            plot_one(repo_name=args.repository, pre_fetch_size=args.pfs,
+                     distance_to_fetch=args.dtf,
+                     version='version_' + str(args.v))
+        else:
+            parser.error('--v, --dtf and --pfs have to be set')
+    elif fun == 'plot_several':
+        if args.v and args.dtf and args.pfs:
+            plot_several(pre_fetch_size=args.pfs, distance_to_fetch=args.dtf,
+                         version=args.v)
+        else:
+            parser.error('--v, --dtf and --pfs have to be set')
+    elif fun == 'plot_fixed_cache_ratio':
+        if args.v and args.cr:
+            plot_fixed_cache_ratio(
+                repo_name=args.repository, cache_ratio=args.cr,
+                version='version_' + str(args.v))
+        else:
+            parser.error('--v and --cr have to be set')
+    elif fun == 'plot_different_versions':
+        if args.pfs and args.dtf:
+            plot_different_versions(
+                distance_to_fetch=args.dtf, repo_name=args.repository,
+                pre_fetch_size=args.pfs)
+        else:
+            parser.error('--pfs and --dtf have to be set')
+    elif fun == 'plot_speedup':
+        if args.v and args.v2 and args.dtf and args.pfs:
+            plot_speedup(
+                repo_name=args.repository,
+                distance_to_fetch=args.dtf,
+                pre_fetch_size=args.pfs,
+                versions=(
+                    'version_' + str(args.v),
+                    'version_' + str(args.v2)))
+    elif fun == 'evaluation':
+        if args.b and args.v and args.pfs and args.dtf and args.cr:
+            evaluation(
+                repo_name=args.repository, cache_ratio=args.cr,
+                version='version_' + str(args.v), pre_fetch_size=args.pfs,
+                distance_to_fetch=args.dtf, branch=args.b)
+        else:
+            parser.error('--b, --v, --pfs, --dtf and --cr are required')
 
-    }
+FUNCTION_CHOICES = [
+    'plot_one',
+    'plot_several',
+    'plot_fixed_cache_ratio',
+    'plot_different_versions',
+    'plot_speedup',
+    'evaluation'
+]
 
-    functions[function](*args)
+parser = argparse.ArgumentParser(
+    description='Show results of FixCache analysis')
+
+parser.add_argument('-d', '-daemon', action='store_true')
+parser.add_argument('function', metavar='fun', choices=FUNCTION_CHOICES)
+parser.add_argument('repository', metavar='repo')
+parser.add_argument('--cr', '--cache_ratio', type=float)
+parser.add_argument('--pfs', '--pre_fetch_size', type=float)
+parser.add_argument('--dtf', '--distance_to_fetch', type=float)
+parser.add_argument('--v', '--version', type=int)
+parser.add_argument('--v2', '--version2', type=int)
+parser.add_argument('--b', '--branch', type=str, default='master')
 
 if __name__ == "__main__":
-    main(*sys.argv[1:])
+    args = parser.parse_args()
+    if args.function != 'plot_speedup' and args.v != CURRENT_VERSION:
+        parser.error('Version has to be %s' % (CURRENT_VERSION,))
+
+    if args.d:
+        with daemon.DaemonContext():
+            main(args)
+    else:
+        main(args)
