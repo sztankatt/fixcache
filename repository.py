@@ -14,7 +14,6 @@ import os
 import sys
 import constants
 import helper_functions
-import datetime
 
 # TODO:
 # 1) introduce line count to the file. increase at each commit, if 0,
@@ -434,8 +433,7 @@ class Repository(RepositoryMixin):
         :rtype: tuple of file, deleted lines and change type
         :return: Returns a list of tuples with specification as above
         """
-        diffs = commit2.diff(commit1, create_patch=True, unified=True)
-
+        diffs = commit2.diff(commit1, create_patch=True, unified=0)
         file_dict = {}
         for diff in diffs:
             deleted_lines = parsing.get_deleted_lines_from_diff(
@@ -469,7 +467,7 @@ class WindowedRepository(Repository):
     False negative: not in the cache, but in the horizon.
     """
 
-    def __init__(self, window=0.9, horizon_step=10, *args, **kwargs):
+    def __init__(self, window=0.9, *args, **kwargs):
         """Initalization of Repository variables, with window variables."""
         super(WindowedRepository, self).__init__(*args, **kwargs)
         self.window = window

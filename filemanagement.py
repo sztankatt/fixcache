@@ -182,9 +182,7 @@ class FileSet:
     def reset(self):
         """Reset all the files in the set."""
         for file_ in self.files:
-            del file_
-        del self.files
-        self.files = {}
+            file_.reset()
 
     def file_in(self, file_):
         """Check whether a file is present in the set."""
@@ -414,12 +412,7 @@ class DistanceSet(object):
     def reset(self):
         """Reset the distance set object."""
         for distance in self.distance_set:
-            del distance
-        del self.distance_set
-        del self.distance_dict
-
-        self.distance_set = set()
-        self.distance_dict = {}
+            distance.reset()
 
     def remove_files(self, files):
         """Remove distances associated with a file."""

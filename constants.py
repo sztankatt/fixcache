@@ -17,7 +17,8 @@ REPO_DICT = {
     'facebook-sdk': FACEBOOK_SDK_REPO,
     'boto3': BOTO3_REPO,
     'boto': BOTO_REPO,
-    'raspberryio': RASPBERRYIO_REPO
+    'raspberryio': RASPBERRYIO_REPO,
+    'django': DJANGO_REPO
 }
 
 REPO_DATA = {

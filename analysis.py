@@ -113,28 +113,29 @@ def analyse_by_fixed_cache_ratio(version, repo, cache_ratio, pfs_set, dtf_set):
     logger.info("Analysis finished at %s\n" % (datetime.datetime.now(),))
 
 
-def evaluate_repository(repo, cache_ratio, pre_fetch_size, distance_to_fetch,
+def evaluate_repository(repo_name, cache_ratio, pre_fetch_size,
+                        distance_to_fetch,
                         version, **kwargs):
     """Evaluate a repository and save the evaluation results."""
     repo = WindowedRepository(
-        repo_dir=constants.REPO_DICT[repo],
+        repo_dir=constants.REPO_DICT[repo_name],
         cache_ratio=cache_ratio,
         pre_fetch_size=pre_fetch_size,
         distance_to_fetch=distance_to_fetch,
         **kwargs)
 
-    dir_ = os.path.join(constants.CSV_ROOT, version, repo.repo_dir)
+    dir_ = os.path.join(constants.CSV_ROOT, version, repo_name)
 
     if not os.path.exists(dir_):
         os.makedirs(dir_)
 
     file_ = os.path.join(dir_, 'evaluate_%s_cr_%s_pfs_%s_dtf_%s.csv' % (
-        repo, cache_ratio, pre_fetch_size, distance_to_fetch))
+        repo_name, cache_ratio, pre_fetch_size, distance_to_fetch))
 
     file_metadata = os.path.join(
         dir_,
         'evaluate_%s_cr_%s_pfs_%s_dtf_%s_metadata.csv' % (
-            repo, cache_ratio, pre_fetch_size, distance_to_fetch))
+            repo_name, cache_ratio, pre_fetch_size, distance_to_fetch))
 
     if os.path.exists(file_) and os.path.exists(file_metadata):
         logger.info('Evaluation exists.\nExit\n')
