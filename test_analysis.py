@@ -14,7 +14,7 @@ def main():
     """Main entry for test_analysis.py."""
     logger.setLevel(logging.INFO)
     repo = Repository(
-        repo_dir=constants.RASPBERRYIO_REPO,
+        repo_dir=constants.FACEBOOK_SDK_REPO,
         cache_ratio=0.2,
         branch='master',
         distance_to_fetch=0.1,

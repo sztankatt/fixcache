@@ -11,17 +11,9 @@ import git
 import logging
 import itertools
 import os
-import sys
+import argparse
 import constants
 import helper_functions
-
-# TODO:
-# 1) introduce line count to the file. increase at each commit, if 0,
-#    file deleted
-# 2) only call get diff when line introduction is needed, otherwise
-#    use stat
-# 3) revise parsing, correclty is not working correclty
-# 4) make all the pick-top-k functions nlogk using a heap
 
 
 logger = logging.getLogger('fixcache_logger')
@@ -75,13 +67,6 @@ class RepositoryMixin(object):
 
     def _get_commit_tree_files(self, commit):
         """Retrn a list of blobs for a given commit.
-
-        :type commit: Commit object
-        :param commit: The input commit for which we want to know the list of
-                        file_list
-
-        :rtype: string list
-        :return: List of strings representing the filename
         """
         file_list = []
         for item in commit.tree.traverse():
@@ -252,9 +237,6 @@ class Repository(RepositoryMixin):
     def run_fixcache(self):
         """Run fixcache with the given variables."""
         for commit in self.commit_list:
-            # print '[%s]Currently at %s' % (
-            #    datetime.datetime.fromtimestamp(commit.committed_date).year,
-            #    commit)
             logger.debug('Currently at %s' % commit)
             parents = commit.parents
 
@@ -331,8 +313,6 @@ class Repository(RepositoryMixin):
                         file_.line_count = line_count
                     files_to_add.append(file_)
                 self.cache.add_multiple(files_to_add)
-            else:
-                pass
 
     def _cleanup_files(self, files):
         self.file_set.remove_files(files)
@@ -385,33 +365,19 @@ class Repository(RepositoryMixin):
 
     def _get_line_introducing_commits(self, line_list, file_path, commit):
         """Return the set of commits which introduced lines in a file.
-
-        Ideally this will be a single commit, not more.
-
-        :type line_list: int tuple list
-        :param line_list: The list of tuples specifying the lines
-
-        :type file: str
-        :param file: The string representation of a file in the repo
-
-        :commit line_list: Commit object
-        :param line: Commit object. The point in history where we want to
-                     look at the file
-
-        :rtype: Commit set
-        :return: Returns the set of commits which introduced the line_list
         """
+
         commit_list = []
         commit_set = []
         try:
             for line_intr_c, lines in self.repo.blame(commit, file_path):
                 commit_list += [(line_intr_c, x) for x in lines]
 
-        except git.exc.GitCommandError:
-            print "git.exc.GitCommandError"
-            return set()
-        finally:
-            pass
+        except git.exc.GitCommandError as gce:
+            logging.warning(gce)
+            raise RepositoryError(
+                "Error occured during getting line introducing commits")
+
         if len(commit_list) == 0:
             return set()
         for line_num in line_list:
@@ -423,16 +389,8 @@ class Repository(RepositoryMixin):
 
     def _get_diff_deleted_lines(self, commit1, commit2):
         """Return a list of blobs which changed from commit1 to commit2.
-
-        :type commit1: Commit object
-        :param commit1: The child commit, which is newer
-
-        :type commit2: Commit object
-        :param commit2: The parent commit, which is older
-
-        :rtype: tuple of file, deleted lines and change type
-        :return: Returns a list of tuples with specification as above
         """
+
         diffs = commit2.diff(commit1, create_patch=True, unified=0)
         file_dict = {}
         for diff in diffs:
@@ -561,25 +519,41 @@ class WindowedRepository(Repository):
 
                 counter += 1
 
-        """
-        True positive: in cache, and in horizon
-        False positive: in the cache, but not in the horizon
-        True negative: not in the cache, and not in the horizon
-        False negative: not in the cache, but in the horizon.
-        """
-
         return output
 
 
-def main():
-    """Main entry point for the script."""
-    logger = logging.getLogger('fixcache_logger')
-    logger.setLevel(logging.INFO)
-    r = RandomRepository(
-        repo_dir=constants.FACEBOOK_SDK_REPO, cache_ratio=1.0)
-    r.run_fixcache()
-    print r.hit_count
-    print r.miss_count
+def main(args):
+    repo = Repository(
+        repo_dir=args.repository,
+        cache_ratio=args.cr,
+        distance_to_fetch=args.dtf,
+        pre_fetch_size=args.pfs,
+        branch=args.b)
 
-if __name__ == '__main__':
-    sys.exit(main())
+    repo.run_fixcache()
+    cache = [(x.line_count, x) for x in repo.cache.file_set]
+    cache.sort(reverse=True)
+
+    print "Files identified by FixCache:\n"
+    for line_count, f in cache:
+        print line_count, ':', f.path
+
+
+parser = argparse.ArgumentParser(
+    description='Show results of FixCache analysis')
+parser.add_argument('repository', metavar='repo')
+parser.add_argument('--cr', '--cache_ratio', type=float, required=True)
+parser.add_argument('--pfs', '--pre_fetch_size', type=float, required=True)
+parser.add_argument('--dtf', '--distance_to_fetch', type=float, required=True)
+parser.add_argument('--b', '--branch', type=str, default='master')
+parser.add_argument('--logging', default='info')
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+
+    if args.logging == 'info':
+        logger.setLevel(logging.INFO)
+    elif args.logging == 'debug':
+        logger.setLevel(logging.DEBUG)
+
+    main(args)

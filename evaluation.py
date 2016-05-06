@@ -7,6 +7,7 @@ import logging
 import datetime
 import daemon
 import argparse
+import repository
 from repository import WindowedRepository
 
 logger = logging.getLogger('fixcache_logger')
@@ -16,14 +17,23 @@ def evaluate_repository(repo_name, cache_ratio, pre_fetch_size,
                         distance_to_fetch,
                         version, **kwargs):
     """Evaluate a repository and save the evaluation results."""
-    repo = WindowedRepository(
-        repo_dir=constants.REPO_DICT[repo_name],
-        cache_ratio=cache_ratio,
-        pre_fetch_size=pre_fetch_size,
-        distance_to_fetch=distance_to_fetch,
-        **kwargs)
+    try:
+        repo = WindowedRepository(
+            repo_dir=constants.REPO_DICT[repo_name],
+            cache_ratio=cache_ratio,
+            pre_fetch_size=pre_fetch_size,
+            distance_to_fetch=distance_to_fetch,
+            **kwargs)
+    except KeyError:
+        print("Error: the requested repository does not exists." +
+              "Please update constants.py")
+        return
+    except repository.RepositoryError as re:
+        print(re)
+        return
 
-    dir_ = os.path.join(constants.CSV_ROOT, version, repo_name)
+    dir_ = os.path.join(
+        constants.CSV_ROOT, 'version_' + str(version), repo_name)
 
     if not os.path.exists(dir_):
         os.makedirs(dir_)
@@ -66,30 +76,24 @@ def evaluate_repository(repo_name, cache_ratio, pre_fetch_size,
     return True
 
 
-def main(parser):
+def main(args):
     """Main entry."""
-    pass
+    evaluate_repository(
+        repo_name=args.repository, pre_fetch_size=args.pfs,
+        distance_to_fetch=args.dtf, cache_ratio=args.cr,
+        version=constants.CURRENT_VERSION, branch=args.b)
 
-ANALYSIS_CHOICES = [
-    'analyse_by_cache_ratio',
-    'analyse_single',
-    'random_cache_analyser',
-    'analyse_by_fixed_cache_ratio']
 
 parser = argparse.ArgumentParser(
-    description='Run FixCache analysis for different repos')
+    description='Run FixCache evaluation for different repos')
 
 parser.add_argument('-d', '-daemon', action='store_true')
-parser.add_argument(
-    'function', metavar='fun', choices=ANALYSIS_CHOICES,
-    help='function for an analysis')
 parser.add_argument('repository', metavar='repo')
-parser.add_argument('--cr', '--cache_ratio', type=float)
-parser.add_argument('--pfs', '--pre_fetch_size', type=float)
-parser.add_argument('--dtf', '--distance_to_fetch', type=float)
+parser.add_argument('--cr', '--cache_ratio', type=float, required=True)
+parser.add_argument('--pfs', '--pre_fetch_size', type=float, required=True)
+parser.add_argument('--dtf', '--distance_to_fetch', type=float, required=True)
 parser.add_argument('--b', '--branch', type=str, default='master')
 parser.add_argument('--logging', default='info')
-parser.add_argument('--v', '--version', type=int)
 
 
 if __name__ == '__main__':
@@ -102,6 +106,6 @@ if __name__ == '__main__':
 
     if args.d:
         with daemon.DaemonContext():
-            main(parser)
+            main(args)
     else:
-        main(parser)
+        main(args)

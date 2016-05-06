@@ -6,7 +6,7 @@ import csv
 
 import os
 
-from analysis import evaluate_repository
+from evaluation import evaluate_repository
 
 import constants
 
@@ -22,6 +22,7 @@ import numpy as np
 import daemon
 
 from pylab import text
+
 
 fontsize = 20
 
@@ -71,7 +72,8 @@ def plot_several(pre_fetch_size, distance_to_fetch, version, figure_name=None):
     x = range(100)
     legend = []
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(19, 8))
+    plt.tick_params(labelsize=fontsize)
 
     for repo_name in REPO_DATA:
         csv_reader = _file_to_csv(
@@ -79,34 +81,36 @@ def plot_several(pre_fetch_size, distance_to_fetch, version, figure_name=None):
             repo_name=repo_name, pre_fetch_size=pre_fetch_size,
             distance_to_fetch=distance_to_fetch)
         y = get_column(csv_reader, 'hit_rate')
-        if y is not None:
+        if y is not None and y != []:
             plt.plot([float(x1 + 1) / 100 for x1 in x],
-                     y, color=REPO_DATA[repo_name]['color'])
+                     y, color=REPO_DATA[repo_name]['color'], linewidth=3)
             line = mlines.Line2D(
                 [], [], color=REPO_DATA[repo_name]['color'],
-                label=REPO_DATA[repo_name]['legend'], linewidth=2)
+                label=REPO_DATA[repo_name]['legend'], linewidth=3)
             legend.append(line)
 
-    plt.legend(handles=legend, loc=4, fontsize=12)
-    plt.ylabel('hit-rate')
-    plt.xlabel('cache-ratio')
+    plt.legend(handles=legend, loc=4, fontsize=fontsize)
+    plt.ylabel('hit-rate', fontsize=fontsize)
+    plt.xlabel('cache-ratio', fontsize=fontsize)
     plt.plot([0.1 for i in range(101)],
              [float(q) / 100 for q in range(101)],
              color='black', linestyle='-.')
 
     if figure_name is None:
         plt.title("FixCache for several repositories",
-                  y=1.02)
+                  y=1.02, fontsize=fontsize)
     else:
         plt.title(figure_name)
 
     legend_text = 'pre-fetch-size = %s, distance-to-fetch = %s' % (
         pre_fetch_size, distance_to_fetch)
-    text(0.99, 0.2, legend_text, ha='right', va='top',
-         transform=ax.transAxes, multialignment='left', fontsize=12,
+    text(0.985, 0.4, legend_text, ha='right', va='top',
+         transform=ax.transAxes, multialignment='left', fontsize=fontsize,
          bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
     plt.grid(True)
     plt.autoscale(False)
+    fig.tight_layout()
+    ax.set_ylim(0.0, 1.05)
     plt.show()
 
 
@@ -153,9 +157,11 @@ def plot_one(repo_name, pre_fetch_size,
 def plot_all(repo_name, version):
     dtf_set = [0.1, 0.2, 0.3, 0.4, 0.5]
     pfs_set = [0.1, 0.15, 0.2]
-
-    x = [float(x1 + 1) / 100 for x1 in range(100)]
-
+    fontsize = 18
+    fig, ax = plt.subplots()
+    ax.set_ylim(0.0, 1.1)
+    ax.set_xlim(0.0, 1.0)
+    hit_rates = []
     for pfs in pfs_set:
         for dtf in dtf_set:
             csv_reader = _file_to_csv(
@@ -165,12 +171,33 @@ def plot_all(repo_name, version):
                 continue
             else:
                 hit_rate = get_column(csv_reader, 'hit_rate')
-                plt.plot(x, hit_rate)
+                hit_rates.append(hit_rate)
+
+    hit_rates = np.matrix(hit_rates)
+    counter = 0.01
+    avg = []
+    diff = []
+    for column in hit_rates.T:
+        plt.plot([counter, counter], [column.min(), column.max()], linewidth=3,
+                 color='k')
+        counter += 0.01
+
+        avg.append((column.max() + column.min()) / 2.0)
+        diff.append(column.max() - column.min())
+
+    print max(diff)
+    print diff.index(max(diff))
+    print diff[11]
+
+    plt.tick_params(labelsize=fontsize)
+    x = [float(x1 + 1) / 100 for x1 in range(100)]
+    plt.plot(x, avg, color='k', linewidth=2)
 
     plt.title('All cache-ratio analyses for %s (#c=%s)' % (
-        repo_name + '.git', REPO_DATA[repo_name]['commit_num']))
-    plt.ylabel('hit-rate')
-    plt.xlabel('cache-ratio')
+        repo_name + '.git', REPO_DATA[repo_name]['commit_num']),
+        fontsize=fontsize)
+    plt.ylabel('hit-rate', fontsize=fontsize)
+    plt.xlabel('cache-ratio', fontsize=fontsize)
     plt.grid(True)
     plt.autoscale(False)
     plt.show()
@@ -197,20 +224,26 @@ def plot_fixed_cache_ratio(repo_name, cache_ratio, version, fig_name=None):
         pfs_size = pfs_size + 10 * [i]
     print len(pfs_size), len(dtf_size)
 
-    sc = plt.scatter(pfs_size, dtf_size, s=80,
+    fig, ax = plt.subplots(figsize=(10, 10))
+    plt.tick_params(labelsize=fontsize)
+    plt.grid(True)
+    sc = plt.scatter(pfs_size, dtf_size, s=300,
                      color=[str(x) for x in hit_rate],
-                     cmap=plt.cm.viridis)
+                     cmap=plt.cm.viridis_r, alpha=0.85)
 
     plt.title(
-        'fixed cache-ratio of %s for %s.git' % (cache_ratio, repo_name,))
+        'fixed cache-ratio of %s for %s.git' % (cache_ratio, repo_name,),
+        fontsize=fontsize)
 
-    plt.ylabel('distance-to-fetch')
-    plt.xlabel('pre-fetch-size')
+    plt.ylabel('distance-to-fetch', fontsize=fontsize)
+    plt.xlabel('pre-fetch-size', fontsize=fontsize)
 
-    fig = plt.gcf()
     axcb = fig.colorbar(sc)
-    axcb.set_label('Hit rate')
-
+    axcb.ax.tick_params(labelsize=fontsize)
+    axcb.set_label('Hit rate', fontsize=fontsize)
+    ax.set_ylim(0.05, 0.6)
+    ax.set_xlim(0.075, 0.375)
+    fig.tight_layout()
     plt.show()
 
 
@@ -314,22 +347,14 @@ def _label_rects(rects, annotation, ax):
         ax.text(
             rect.get_x() + rect.get_width() / 2., 1.01,
             '%d' % int(annotation[counter]),
-            ha='center', va='bottom')
+            ha='center', va='bottom', fontsize=fontsize)
 
 
-def evaluation(repo_name, cache_ratio, pre_fetch_size, distance_to_fetch,
-               version, branch='master', **kwargs):
-    """Evaluate a repository, produce an evaluation graph."""
+def _get_statistics(repo_name, cache_ratio, pre_fetch_size, distance_to_fetch,
+                    version, branch, n=10, **kwargs):
     if evaluate_repository(repo_name, float(cache_ratio),
                            float(pre_fetch_size), float(distance_to_fetch),
                            version, branch=branch, **kwargs):
-        # metadata = _file_to_csv_by_name(
-        #     version, repo_name,
-        #     'evaluate_%s_cr_%s_pfs_%s_dtf_%s_metadata.csv' % (
-        #         repo_name, cache_ratio, pfs, dtf))[0]
-
-        n = 10
-        width = 0.25
 
         csv_reader = _file_to_csv_by_name(
             version=version, repo_name=repo_name,
@@ -343,7 +368,6 @@ def evaluation(repo_name, cache_ratio, pre_fetch_size, distance_to_fetch,
         counter = get_column(csv_reader, 'counter')[:n]
 
         n = len(counter)
-        ind = np.arange(n)
 
         true_positive = np.array([float(i) for i in true_positive])
         false_positive = np.array([float(i) for i in false_positive])
@@ -351,118 +375,209 @@ def evaluation(repo_name, cache_ratio, pre_fetch_size, distance_to_fetch,
         false_negative = np.array([float(i) for i in false_negative])
         file_count = np.array([float(i) for i in file_count])
 
-        # figure 1 data
-        precision = true_positive / (true_positive + false_positive)
-        f_discovery_rate = false_positive / (true_positive + false_positive)
-        n_predictive_value = true_negative / (true_negative + false_negative)
-        f_omission_rate = false_negative / (true_negative + false_negative)
+        return (true_positive, false_positive, true_negative, false_negative,
+                file_count, counter)
 
-        # figure 2 data
-        accuracy = (true_positive + true_negative) / (
-            true_positive + true_negative + false_negative + false_positive)
-        f1_score = 2 * true_positive / (
-            2 * true_positive + false_negative + false_positive)
 
-        # figure 3 data
-        sensitivity = true_positive / (true_positive + false_negative)
-        specificity = true_negative / (true_negative + false_positive)
+def evaluation_comparison(repo_name, version,
+                          pre_fetch_size=0.1, distance_to_fetch=0.5,
+                          branch='master', **kwargs):
 
-        # figure 4 data
-        # figure 1
-        fig, ax = plt.subplots()
-        fig.tight_layout()
-        # settings
-        ax.set_xticks(ind + width)
-        ax.set_xticklabels(counter)
-        ax.set_ylim(0.0, 1.34)
-        plt.ylabel('ratio', fontsize=fontsize)
-        plt.xlabel('10 bug-fixing commits after stopping FixCache at tHStart',
-                   fontsize=fontsize)
-        plt.title("TP, FP, TN and FN values for %s.git" % (repo_name,),
-                  y=1.02)
-        plt.grid(True)
+    fontsize = 18
+    figsize = 18, 9
+    n = 30
+    f_beta = 2
+    (tp_01, fp_01, tn_01, fn_01, fc_01, counter_01) = _get_statistics(
+        repo_name=repo_name, cache_ratio=0.1,
+        pre_fetch_size=pre_fetch_size, distance_to_fetch=distance_to_fetch,
+        version=version, n=n, branch=branch, **kwargs)
 
-        # showing the bars
-        p1 = plt.bar(ind, precision, width, color='#0FCC1B')
-        p2 = plt.bar(
-            ind, f_discovery_rate, width, color='#CC8800', bottom=precision)
-        p3 = plt.bar(ind + width, n_predictive_value, width, color='#0369CC')
-        p4 = plt.bar(ind + width, f_omission_rate, width, color='#CC0200',
-                     bottom=n_predictive_value)
+    (tp_02, fp_02, tn_02, fn_02, fc_02, counter_02) = _get_statistics(
+        repo_name=repo_name, cache_ratio=0.2,
+        pre_fetch_size=pre_fetch_size, distance_to_fetch=distance_to_fetch,
+        version=version, n=n, branch=branch, **kwargs)
 
-        _label_rects(p2, true_positive + false_positive, ax)
-        _label_rects(p4, true_negative + false_negative, ax)
+    ind = np.arange(len(counter_01))
+    linewidth = 3
+    fig, ax = plt.subplots(figsize=figsize)
+    plt.locator_params(axis='x', nbins=n)
+    ax.set_ylim(0.0, 1.1)
+    precision_01 = tp_01 / (tp_01 + fp_01)
+    recall_01 = tp_01 / (tp_01 + fn_01)
+    f1_01 = (1 + f_beta**2) * tp_01 / (
+        (1 + f_beta**2) * tp_01 + f_beta**2 * fn_01 + fp_01)
 
-        # legends
-        plt.legend(
-            (p1[0], p2[0], p3[0], p4[0]),
-            ('Precision', 'False discovery rate', 'Negative predictive value',
-             'False omission rate'), prop={'size': 12})
+    precision_02 = tp_02 / (tp_02 + fp_02)
+    recall_02 = tp_02 / (tp_02 + fn_02)
+    f1_02 = (1 + f_beta**2) * tp_02 / (
+        (1 + f_beta**2) * tp_02 + f_beta**2 * fn_02 + fp_02)
 
-        legend_text = 'pre-fetch-size = %s\ndistance-to-fetch = %s\n' % (
-            pre_fetch_size, distance_to_fetch)
+    ax.set_xticklabels(counter_01)
+    plt.plot(ind, precision_01, '--', label='Precision (cr=0.1)',
+             color='green', linewidth=linewidth)
+    plt.plot(ind, precision_02,
+             color='green', linewidth=linewidth, label='Precision (cr=0.2)')
 
-        legend_text += 'cache-ratio = %s\ncommit-number = %s' % (
-            cache_ratio, REPO_DATA[repo_name]['commit_num'])
+    plt.plot(ind, f1_01, '--', color='orange', linewidth=linewidth,
+             label=r'$F_2$ score (cr=0.1)')
+    plt.plot(ind, f1_02, color='orange', linewidth=linewidth,
+             label=r'$F_2$ score (cr=0.2)')
 
-        text(
-            0.025, 0.975, legend_text, ha='left', va='top', fontsize=12,
-            transform=ax.transAxes, multialignment='left',
-            bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
-        plt.tight_layout()
-        # figure 2
-        fig, ax = plt.subplots()
-        fig.tight_layout()
-        # settings
-        ax.set_xticks(ind + width)
-        ax.set_xticklabels(counter)
-        ax.set_ylim(0.0, 1.34)
-        plt.ylabel('ratio', fontsize=fontsize)
-        plt.xlabel('10 bug-fixing commits after stopping FixCache at tHStart',
-                   fontsize=fontsize)
-        plt.title("Accuracy and F1 score for %s.git" % (repo_name,),
-                  y=1.02)
-        plt.grid(True)
+    plt.plot(ind, recall_01, '--', color='blue', linewidth=linewidth,
+             label='Recall (cr=01)')
+    plt.plot(ind, recall_02, color='blue', linewidth=linewidth,
+             label='Recall (cr=0.2)')
 
-        # showing the bars
-        p5 = plt.bar(ind, accuracy, width, color='blue')
-        p6 = plt.bar(ind + width, f1_score, width, color='orange')
+    plt.grid(True)
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=3, mode="expand", borderaxespad=0., fontsize=fontsize)
+    plt.title('Evaluating %s.git' % (repo_name,), fontsize=fontsize, y=1.15)
+    fig.subplots_adjust(top=0.8)
+    plt.tick_params(labelsize=fontsize)
+    plt.xlabel('Fixing commit numbers after tNow*0.9', fontsize=fontsize)
+    fig.tight_layout()
+    plt.show()
 
-        # legend
-        plt.legend((p5[0], p6[0]), ('Accuracy', 'F1 score'), prop={'size': 12})
-        text(
-            0.025, 0.975, legend_text, ha='left', va='top', fontsize=12,
-            transform=ax.transAxes, multialignment='left',
-            bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
-        plt.tight_layout()
-        # figure 3
-        fig, ax = plt.subplots()
-        fig.tight_layout()
-        # settings
-        ax.set_xticks(ind + width)
-        ax.set_xticklabels(counter)
-        ax.set_ylim(0.0, 1.34)
-        plt.ylabel('ratio', fontsize=fontsize)
-        plt.xlabel('10 bug-fixing commits after stopping FixCache at tHStart',
-                   fontsize=fontsize)
-        plt.title("Specificity and Sensitivity for %s.git" % (repo_name,),
-                  y=1.02)
-        plt.grid(True)
 
-        # showing the bars
-        p7 = plt.bar(ind, specificity, width, color='#7F0040')
-        p8 = plt.bar(ind + width, sensitivity, width, color='#FF0081')
+def evaluation(repo_name, cache_ratio, pre_fetch_size, distance_to_fetch,
+               version, branch='master', **kwargs):
+    """Evaluate a repository, produce an evaluation graph."""
+    n = 10
+    width = 0.25
+    y_lim = 1.5
+    figsize = 18, 9
 
-        # legend
-        plt.legend(
-            (p7[0], p8[0]), ('Specificity', 'Sensitivity'), prop={'size': 12})
-        text(
-            0.025, 0.975, legend_text, ha='left', va='top', fontsize=fontsize,
-            transform=ax.transAxes, multialignment='left',
-            bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
+    (true_positive, false_positive, true_negative, false_negative,
+     file_count, counter) = _get_statistics(
+        repo_name=repo_name, cache_ratio=cache_ratio,
+        pre_fetch_size=pre_fetch_size, distance_to_fetch=distance_to_fetch,
+        version=version, n=n, branch=branch, **kwargs)
 
-        # showing all the figures
-        plt.show()
+    ind = np.arange(n)
+
+    # figure 1 data
+    precision = true_positive / (true_positive + false_positive)
+    f_discovery_rate = false_positive / (true_positive + false_positive)
+    n_predictive_value = true_negative / (true_negative + false_negative)
+    f_omission_rate = false_negative / (true_negative + false_negative)
+
+    # figure 2 data
+    accuracy = (true_positive + true_negative) / (
+        true_positive + true_negative + false_negative + false_positive)
+    f1_score = 2 * true_positive / (
+        2 * true_positive + false_negative + false_positive)
+
+    # figure 3 data
+    sensitivity = true_positive / (true_positive + false_negative)
+    specificity = true_negative / (true_negative + false_positive)
+
+    # figure 4 data
+    # figure 1
+    fig, ax = plt.subplots(figsize=figsize)
+    # settings
+    ax.set_xticks(ind + width)
+    ax.set_xticklabels(counter)
+    ax.set_ylim(0.0, y_lim)
+    # plt.ylabel('ratio', fontsize=fontsize)
+    plt.xlabel('10 bug-fixing commits after stopping FixCache at tHStart',
+               fontsize=fontsize)
+    plt.title("TP, FP, TN and FN values for %s.git" % (repo_name,),
+              y=1.02, fontsize=fontsize)
+    plt.grid(True)
+
+    # showing the bars
+    p1 = plt.bar(ind, precision, width, color='#0FCC1B')
+    p2 = plt.bar(
+        ind, f_discovery_rate, width, color='#CC8800', bottom=precision)
+    p3 = plt.bar(ind + width, n_predictive_value, width, color='#0369CC')
+    p4 = plt.bar(ind + width, f_omission_rate, width, color='#CC0200',
+                 bottom=n_predictive_value)
+
+    _label_rects(p2, true_positive + false_positive, ax)
+    _label_rects(p4, true_negative + false_negative, ax)
+
+    # legends
+    plt.legend(
+        (p1[0], p2[0], p3[0], p4[0]),
+        ('Precision', 'False discovery rate', 'Negative predictive value',
+         'False omission rate'), prop={'size': fontsize})
+
+    legend_text = 'pre-fetch-size = %s\ndistance-to-fetch = %s\n' % (
+        pre_fetch_size, distance_to_fetch)
+
+    legend_text += 'cache-ratio = %s\ncommit count = %s' % (
+        cache_ratio, REPO_DATA[repo_name]['commit_num'])
+
+    text(
+        0.025, 0.975, legend_text, ha='left', va='top', fontsize=fontsize,
+        transform=ax.transAxes, multialignment='left',
+        bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
+
+    fig.tight_layout()
+    fig.subplots_adjust(left=0.04)
+    plt.tick_params(labelsize=fontsize)
+
+    # figure 2
+    fig, ax = plt.subplots(figsize=figsize)
+    # settings
+    ax.set_xticks(ind + width)
+    ax.set_xticklabels(counter)
+    ax.set_ylim(0.0, y_lim)
+    # plt.ylabel('ratio', fontsize=fontsize)
+    plt.xlabel('10 bug-fixing commits after stopping FixCache at tHStart',
+               fontsize=fontsize)
+    plt.title("Accuracy and F1 score for %s.git" % (repo_name,),
+              y=1.02, fontsize=fontsize)
+    plt.grid(True)
+
+    # showing the bars
+    p5 = plt.bar(ind, accuracy, width, color='blue')
+    p6 = plt.bar(ind + width, f1_score, width, color='orange')
+
+    # legend
+    plt.legend(
+        (p5[0], p6[0]), ('Accuracy', 'F1 score'), prop={'size': fontsize})
+    text(
+        0.025, 0.975, legend_text, ha='left', va='top', fontsize=fontsize,
+        transform=ax.transAxes, multialignment='left',
+        bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
+    plt.tight_layout()
+    # figure 3
+    fig.tight_layout()
+    fig.subplots_adjust(left=0.04)
+    plt.tick_params(labelsize=fontsize)
+
+    # figure 3
+    fig, ax = plt.subplots(figsize=figsize)
+    # settings
+    ax.set_xticks(ind + width)
+    ax.set_xticklabels(counter)
+    ax.set_ylim(0.0, y_lim)
+    # plt.ylabel('ratio', fontsize=fontsize)
+    plt.xlabel('10 bug-fixing commits after stopping FixCache at tHStart',
+               fontsize=fontsize)
+    plt.title("Recall and Specificity for %s.git" % (repo_name,),
+              y=1.02, fontsize=fontsize)
+    plt.grid(True)
+
+    # showing the bars
+    p7 = plt.bar(ind, sensitivity, width, color='#FF0081')
+    p8 = plt.bar(ind + width, specificity, width, color='#7F0040')
+
+    # legend
+    plt.legend(
+        (p7[0], p8[0]),
+        ('Recall', 'Specificity'), prop={'size': fontsize})
+    text(
+        0.025, 0.975, legend_text, ha='left', va='top', fontsize=fontsize,
+        transform=ax.transAxes, multialignment='left',
+        bbox=dict(alpha=1.0, boxstyle='square', facecolor='white'))
+
+    # showing all the figures
+    fig.tight_layout()
+    fig.subplots_adjust(left=0.04)
+    plt.tick_params(labelsize=fontsize)
+    plt.show()
 
 
 def main(args):
@@ -512,6 +627,11 @@ def main(args):
                 distance_to_fetch=args.dtf, branch=args.b)
         else:
             parser.error('--b, --v, --pfs, --dtf and --cr are required')
+    elif fun == 'evaluation_comparison':
+        if args.b and args.v:
+            evaluation_comparison(
+                repo_name=args.repository, pre_fetch_size=args.pfs,
+                version='version_' + str(args.v), branch=args.b)
     elif fun == 'plot_all':
         plot_all(version='version_' + str(args.v), repo_name=args.repository)
 
@@ -522,7 +642,8 @@ FUNCTION_CHOICES = [
     'plot_different_versions',
     'plot_speedup',
     'evaluation',
-    'plot_all'
+    'plot_all',
+    'evaluation_comparison'
 ]
 
 parser = argparse.ArgumentParser(
