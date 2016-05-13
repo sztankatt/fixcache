@@ -133,8 +133,7 @@ class File(object):
             raise FileError("Error during calling change() on file")
 
     def fault(self, commit):
-        """Called when file had a fault.
-        """
+        """Called when file had a fault."""
         try:
             self.faults += 1
         except ValueError as ve:
@@ -142,7 +141,7 @@ class File(object):
             raise FileError("Error during calling fault() on file")
 
     def reset(self, line_count=0):
-        """Re-set the given file, called when analysis restarted."""
+        """Reset the given file, called when analysis restarted."""
         self.changes = 0
         self.last_found = 0
         self.faults = 0
@@ -248,7 +247,6 @@ class Distance(object):
 
     def __init__(self, file1_in, file2_in):
         """Initialization."""
-        # storing the file with longer path as the first one
         self.files = {
             'file1': file1_in,
             'file2': file2_in

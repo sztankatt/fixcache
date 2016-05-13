@@ -96,9 +96,6 @@ class AbstractCache(object):
             self._remove_multiple(to_remove)
             self.file_set = self.file_set | set(files)
         else:
-            # the cache is smaller than the number of file we want to insert
-            # we need to select the files which were recently used, to obey the
-            # LRU cache replacement policy
             files_to_sort = helper_functions.get_top_elements(
                 [(x.last_found, x) for x in files], self.size)
             files_to_insert = [x[1] for x in files_to_sort]
@@ -106,7 +103,6 @@ class AbstractCache(object):
             self.file_set = set(files_to_insert)
 
     def remove_files(self, files):
-        """Remove several files from the cache. Called for deleted files."""
         for file_ in files:
             self.file_set.discard(file_)
 
@@ -122,7 +118,6 @@ class AbstractCache(object):
 
 
 class Cache(AbstractCache):
-    """simple cache using least recently used cache remove policy"""
     def _find_file_to_remove(self):
         file_to_remove = None
         for file_ in self.file_set:
@@ -135,7 +130,6 @@ class Cache(AbstractCache):
         return file_to_remove
 
     def _get_files_to_remove(self, number):
-        """Return the files with smallest last_found."""
         file_list = list(self.file_set)
         file_tuple_list = helper_functions.get_top_elements(
             [(-x.last_found, x) for x in file_list], number)

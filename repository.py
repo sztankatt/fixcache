@@ -94,9 +94,11 @@ class RandomRepository(RepositoryMixin):
         self.pre_fetch_size = None
 
     def run_fixcache(self):
+        commit_num = float(len(self.commit_order))
         """Run fixcache for RandomRepository."""
         for commit in self.commit_list:
-            logger.debug('Currently at %s' % commit)
+            percentage = 100 * self.commit_order[commit.hexsha] / commit_num
+            logger.debug('[%s%]Currently at %s' % (percentage, commit))
             parents = commit.parents
             if len(parents) == 1:
                 # return the list of tuples by file info
@@ -236,8 +238,10 @@ class Repository(RepositoryMixin):
 
     def run_fixcache(self):
         """Run fixcache with the given variables."""
+        commit_num = float(len(self.commit_order))
         for commit in self.commit_list:
-            logger.debug('Currently at %s' % commit)
+            percentage = 100 * self.commit_order[commit.hexsha] / commit_num
+            logger.debug('[%s]Currently at %s' % (int(percentage), commit))
             parents = commit.parents
 
             if len(parents) == 1:
@@ -534,7 +538,8 @@ def main(args):
     cache = [(x.line_count, x) for x in repo.cache.file_set]
     cache.sort(reverse=True)
 
-    print "Files identified by FixCache:\n"
+    print "\n\nFiles identified by FixCache:\n"
+    print 'LOC : file-path'
     for line_count, f in cache:
         print line_count, ':', f.path
 
